@@ -1,26 +1,26 @@
-#include <stdio.h> // for snprintf
-#include <stdlib.h> // for malloc, realloc and free
-#include <string.h> // for memcpy
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "vector.h"
 
 // Internal method to increase vector size
-static Result vector_resize(Vector *vector);
+static VectorResult vector_resize(Vector *vector);
 
 /**
  * vector_new
  *  @size: initial number of elements
  *  @data_size: size of each element in bytes
  *
- *  Returns a Result data type containing a new vector
+ *  Returns a VectorResult data type containing a new vector
  */
-Result vector_new(size_t size, size_t data_size) {
-    Result result = {0};
+VectorResult vector_new(size_t size, size_t data_size) {
+    VectorResult result = {0};
 
     // Allocate a new vector
     Vector *vector = malloc(sizeof(Vector));
     if (vector == NULL) {
-        result.status = 1;
+        result.status = VECTOR_ERR_ALLOCATE;
         snprintf((char *)result.message, RESULT_MSG_SIZE, "Failed to allocate memory for vector");
         
         return result;
@@ -32,13 +32,13 @@ Result vector_new(size_t size, size_t data_size) {
     vector->data_size = data_size;
     vector->elements = calloc(size, data_size);
     if (vector->elements == NULL) {
-        result.status = 1;
+        result.status = VECTOR_ERR_ALLOCATE;
         snprintf((char *)result.message, RESULT_MSG_SIZE, "Failed to allocate memory for vector elements");
 
         return result;
     }
 
-    result.status = 0;
+    result.status = VECTOR_OK;
     snprintf((char *)result.message, RESULT_MSG_SIZE, "Vector successfully created");
     result.value.vector = vector;
 
@@ -51,17 +51,17 @@ Result vector_new(size_t size, size_t data_size) {
  *
  *  Increases the size of @vector
  *
- *  Returns a Result data type containing the status
+ *  Returns a VectorResult data type containing the status
  */
-Result vector_resize(Vector *vector) {
-    Result result = {0};
+VectorResult vector_resize(Vector *vector) {
+    VectorResult result = {0};
 
     size_t old_capacity = vector->capacity;
     vector->capacity = (old_capacity > 0 ? ((old_capacity * 3) / 2) : 1);
 
     // Check for stack overflow errors
     if (vector->capacity > SIZE_MAX / vector->data_size) {
-        result.status = 1;
+        result.status = VECTOR_ERR_OVERFLOW;
         snprintf((char *)result.message, RESULT_MSG_SIZE, "Exceeded maximum size while resizing vector");
 
         return result;
@@ -69,7 +69,7 @@ Result vector_resize(Vector *vector) {
 
     void *new_elements = realloc(vector->elements, (vector->capacity * vector->data_size));
     if (new_elements == NULL) {
-        result.status = 1;
+        result.status = VECTOR_ERR_ALLOCATE;
         snprintf((char *)result.message, RESULT_MSG_SIZE, "Failed to reallocate memory for vector");
 
         return result;
@@ -77,7 +77,7 @@ Result vector_resize(Vector *vector) {
 
     vector->elements = new_elements;
 
-    result.status = 0;
+    result.status = VECTOR_OK;
     snprintf((char *)result.message, RESULT_MSG_SIZE, "Vector successfully resized");
 
     return result;
@@ -86,17 +86,17 @@ Result vector_resize(Vector *vector) {
 /**
  * vector_push
  *  @vector: a non-null vector
- *  @value: a generic value to add on the vector
+ *  @value: a generic value to add to the vector
  *
  *  Adds @value at the end of @vector
  *  
- *  Returns a Result data type containing the status
+ *  Returns a VectorResult data type containing the status
  */
-Result vector_push(Vector *vector, void *value) {
-    Result result = {0};
+VectorResult vector_push(Vector *vector, void *value) {
+    VectorResult result = {0};
 
     if (vector == NULL || value == NULL) {
-        result.status = 1;
+        result.status = VECTOR_ERR_INVALID;
         snprintf((char *)result.message, RESULT_MSG_SIZE, "Invalid vector or value");
 
         return result;
@@ -105,7 +105,7 @@ Result vector_push(Vector *vector, void *value) {
     // Check whether vector has enough space available
     if (vector->capacity == vector->count) {
         result = vector_resize(vector);
-        if (result.status != 0) {
+        if (result.status != VECTOR_OK) {
             return result;
         }
     }
@@ -129,8 +129,56 @@ Result vector_push(Vector *vector, void *value) {
     // Increase elements count
     vector->count++;
 
-    result.status = 0;
+    result.status = VECTOR_OK;
     snprintf((char *)result.message, RESULT_MSG_SIZE, "Value successfully added");
+
+    return result;
+}
+
+/**
+ * vector_set
+ *  @vector: a non-null vector
+ *  @index: a non-negative integer representing the position to write into
+ *  @value: a generic value to add to the vector
+ *
+ *  Writes @value at @index
+ *
+ *  Returns a VectorResult data type
+ */
+VectorResult vector_set(Vector *vector, size_t index, void *value) {
+    VectorResult result = {0};
+
+    if (vector == NULL || value == NULL) {
+        result.status = VECTOR_ERR_INVALID;
+        snprintf((char *)result.message, RESULT_MSG_SIZE, "Invalid vector or value");
+
+        return result;
+    }
+
+    if (index >= vector->count) {
+        result.status = VECTOR_ERR_OVERFLOW;
+        snprintf((char *)result.message, RESULT_MSG_SIZE, "Index out of bounds");
+
+        return result;
+    }
+
+    uint8_t *destination_addr = (uint8_t *)vector->elements + (index * vector->data_size);
+
+    // Append @value to the data structure according to its data type
+    if (vector->data_size == sizeof(int)) {
+        *(int*)destination_addr = *(int*)value;
+    } else if (vector->data_size == sizeof(long)) {
+        *(long*)destination_addr = *(long*)value;
+    } else if (vector->data_size == sizeof(double)) {
+        *(double*)destination_addr = *(double*)value;
+    } else if (vector->data_size == sizeof(float)) {
+        *(float*)destination_addr = *(float*)value;
+    } else {
+        memcpy(destination_addr, value, vector->data_size);
+    }
+
+    result.status = VECTOR_OK;
+    snprintf((char *)result.message, RESULT_MSG_SIZE, "Value successfully set");
 
     return result;
 }
@@ -140,32 +188,100 @@ Result vector_push(Vector *vector, void *value) {
  *  @vector: a non-null vector
  *  @index: a non-negative integer representing the position of an element
  *
- *  Returns a Result data type containing the element at position @index if present
+ *  Returns a VectorResult data type containing the element at position @index if present
  */
-Result vector_get(Vector *vector, size_t index) {
-    Result result = {0};
+VectorResult vector_get(Vector *vector, size_t index) {
+    VectorResult result = {0};
     
     if (vector == NULL) {
-        result.status = 1;
+        result.status = VECTOR_ERR_INVALID;
         snprintf((char *)result.message, RESULT_MSG_SIZE, "Invalid vector");
         
         return result;
     }
 
     if (index >= vector->count) {
-        result.status = 1;
+        result.status = VECTOR_ERR_OVERFLOW;
         snprintf((char *)result.message, RESULT_MSG_SIZE, "Index out of bounds");
 
         return result;
     }
 
-    result.status = 0;
+    result.status = VECTOR_OK;
     snprintf((char *)result.message, RESULT_MSG_SIZE, "Value successfully retrieved");
-    result.value.element = (uint8_t*)vector->elements + (index * vector->data_size);
+    result.value.element = (uint8_t *)vector->elements + (index * vector->data_size);
 
     return result;
 }
 
+/**
+ * vector_pop
+ *  @vector: a non-null vector
+ *
+ *  Logically extract an element from the vector by following the LIFO policy.
+ *  This method does NOT de-allocate memory
+ *
+ *  Returns a VectorResult data type
+ */
+VectorResult vector_pop(Vector *vector) {
+    VectorResult result = {0};
+
+    if (vector == NULL) {
+        result.status = VECTOR_ERR_INVALID;
+        snprintf((char *)result.message, RESULT_MSG_SIZE, "Invalid vector");
+        
+        return result;
+    }
+
+    if (vector->count == 0) {
+        result.status = VECTOR_ERR_UNDERFLOW;
+        snprintf((char *)result.message, RESULT_MSG_SIZE, "Vector is empty");
+
+        return result;
+    }
+    
+    // Pop an element from the vector
+    const size_t index = (vector->count - 1);
+    VectorResult popped_res = vector_get(vector, index);
+
+    if (popped_res.status != VECTOR_OK) {
+        return popped_res;
+    }
+
+    vector->count--;
+
+    result.status = VECTOR_OK;
+    snprintf((char *)result.message, RESULT_MSG_SIZE, "Value successfully popped");
+    result.value.element = popped_res.value.element;
+
+    return result;
+}
+
+/**
+ * vector_clear
+ *  @vector: a non-null vector
+ *
+ *  Resets the vector to an empty state without de-allocating memory
+ *
+ *  Returns a VectorResult data type
+ */
+VectorResult vector_clear(Vector *vector) {
+    VectorResult result = {0};
+
+    if (vector == NULL) {
+        result.status = VECTOR_ERR_INVALID;
+        snprintf((char *)result.message, RESULT_MSG_SIZE, "Invalid vector");
+
+        return result;
+    }
+
+    vector->count = 0;
+
+    result.status = VECTOR_OK;
+    snprintf((char *)result.message, RESULT_MSG_SIZE, "Vector successfully cleared");
+
+    return result;
+}
 
 /**
  * vector_free
@@ -173,17 +289,17 @@ Result vector_get(Vector *vector, size_t index) {
  *
  *  Deletes the vector and all its elements from the memory
  *
- *  Returns a Result data type
+ *  Returns a VectorResult data type
  */
-Result vector_free(Vector *vector) {
-    Result result = {0};
+VectorResult vector_free(Vector *vector) {
+    VectorResult result = {0};
 
     if (vector != NULL) {
         free(vector->elements);
         free(vector);
     }
 
-    result.status = 0;
+    result.status = VECTOR_OK;
     snprintf((char *)result.message, RESULT_MSG_SIZE, "Vector successfully deleted");
 
     return result;
