@@ -6,52 +6,49 @@
 #include <stdint.h>
 #include <stddef.h>
 
-// Vector data type
-typedef struct {
-    size_t count;
-    size_t capacity;
-    size_t data_size;
-    void *elements;
-} Vector;
-
-// Result status codes
 typedef enum {
     VECTOR_OK = 0x0,
     VECTOR_ERR_ALLOCATE,
     VECTOR_ERR_OVERFLOW,
     VECTOR_ERR_UNDERFLOW,
     VECTOR_ERR_INVALID
-} VectorStatus;
+} vector_status_t;
 
-// Wrapper data type for vector APIs
 typedef struct {
-    VectorStatus status;
+    size_t count;
+    size_t capacity;
+    size_t data_size;
+    void *elements;
+} vector_t;
+
+typedef struct {
+    vector_status_t status;
     uint8_t message[RESULT_MSG_SIZE];
     union {
-        Vector *vector;
+        vector_t *vector;
         void *element;
     } value;
-} VectorResult;
+} vector_result_t;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // public APIs
-VectorResult vector_new(size_t size, size_t data_size);
-VectorResult vector_push(Vector *vector, void *value);
-VectorResult vector_set(Vector *vector, size_t index, void *value);
-VectorResult vector_get(Vector *vector, size_t index);
-VectorResult vector_pop(Vector *vector);
-VectorResult vector_clear(Vector *vector);
-VectorResult vector_free(Vector *vector);
+vector_result_t vector_new(size_t size, size_t data_size);
+vector_result_t vector_push(vector_t *vector, void *value);
+vector_result_t vector_set(vector_t *vector, size_t index, void *value);
+vector_result_t vector_get(vector_t *vector, size_t index);
+vector_result_t vector_pop(vector_t *vector);
+vector_result_t vector_clear(vector_t *vector);
+vector_result_t vector_free(vector_t *vector);
 
 // Inline methods
-static inline size_t vector_size(const Vector *vector) {
+static inline size_t vector_size(const vector_t *vector) {
     return vector ? vector->count : 0;
 }
 
-static inline size_t vector_capacity(const Vector *vector) {
+static inline size_t vector_capacity(const vector_t *vector) {
     return vector ? vector->capacity : 0;
 }
 
