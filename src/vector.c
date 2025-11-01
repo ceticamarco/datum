@@ -288,20 +288,25 @@ vector_result_t vector_clear(vector_t *vector) {
 }
 
 /**
- * vector_free
+ * vector_destroy
  *  @vector: a non-null vector
  *
  *  Deletes the vector and all its elements from the memory
  *
  *  Returns a vector_result_t data type
  */
-vector_result_t vector_free(vector_t *vector) {
+vector_result_t vector_destroy(vector_t *vector) {
     vector_result_t result = {0};
 
-    if (vector != NULL) {
-        free(vector->elements);
-        free(vector);
+    if (vector == NULL) {
+        result.status = VECTOR_ERR_INVALID;
+        SET_MSG(result, "Invalid vector");
+
+        return result;
     }
+
+    free(vector->elements);
+    free(vector);
 
     result.status = VECTOR_OK;
     SET_MSG(result, "Vector successfully deleted");

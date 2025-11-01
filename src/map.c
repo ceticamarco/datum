@@ -261,3 +261,122 @@ map_result_t map_get(const map_t *map, const char *key) {
 
     return result;
 }
+
+/**
+ * map_remove
+ *  @map: a non-null map
+ *  @key: a string representing the index key
+ *
+ *  Removes an element indexed by @key from @map
+ *
+ *  Returns a map_result_t data type
+ */
+map_result_t map_remove(map_t *map, const char *key) {
+    map_result_t result = {0};
+
+    if (map == NULL) {
+        result.status = MAP_ERR_INVALID;
+        SET_MSG(result, "Invalid map");
+
+        return result;
+    }
+
+    const size_t idx = map_find_index(map, key);
+
+    if (map->elements[idx].state != ENTRY_OCCUPIED) {
+        result.status = MAP_ERR_INVALID;
+        SET_MSG(result, "Cannot delete this element");
+
+        return result;
+    }
+
+    // Remove element key
+    free(map->elements[idx].key);
+
+    // Remove element properties
+    map->elements[idx].key = NULL;
+    map->elements[idx].value = NULL;
+    map->elements[idx].state = ENTRY_DELETED;
+
+    // Decrease map size and increase its tombstone count
+    map->size--;
+    map->tombstone_count++;
+
+    result.status = MAP_OK;
+    SET_MSG(result, "Key successfully deleted");
+
+    return result;
+}
+
+/**
+ * map_clear
+ *  @map: a non-null map
+ *
+ *  Resets the map to an empty state
+ *
+ *  Returns a map_result_t data type
+ */
+map_result_t map_clear(map_t *map) {
+    map_result_t result = {0};
+
+    if (map == NULL) {
+        result.status = MAP_ERR_INVALID;
+        SET_MSG(result, "Invalid map");
+
+        return result;
+    }
+
+    for (size_t idx = 0; idx < map->capacity; idx++) {
+        if (map->elements[idx].state == ENTRY_OCCUPIED ||
+            map->elements[idx].state == ENTRY_DELETED) {
+            free(map->elements[idx].key);
+            map->elements[idx].key = NULL;
+            map->elements[idx].value = NULL;
+        }
+
+        map->elements[idx].state = ENTRY_EMPTY;
+    }
+
+    // Resets map size and tombstone count
+    map->size = 0;
+    map->tombstone_count = 0;
+
+    result.status = MAP_OK;
+    SET_MSG(result, "Map successfully cleared");
+
+    return result;
+}
+
+/**
+ * map_destroy
+ *  @map: a non-null map
+ *
+ *  Deletes the map and all its elements from the memory
+ *
+ *  Returns a map_result_t data type
+ */
+map_result_t map_destroy(map_t *map) {
+    map_result_t result = {0};
+
+    if (map == NULL) {
+        result.status = MAP_ERR_INVALID;
+        SET_MSG(result, "Invalid map");
+
+        return result;
+    }
+
+    for (size_t idx = 0; idx < map->capacity; idx++) {
+        if (map->elements[idx].state == ENTRY_OCCUPIED ||
+            map->elements[idx].state == ENTRY_DELETED) {
+            free(map->elements[idx].key);
+        }
+    }
+
+    free(map->elements);
+    free(map);
+
+    result.status = MAP_OK;
+    SET_MSG(result, "Map successfully deleted");
+
+    return result;
+}

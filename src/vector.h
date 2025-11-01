@@ -41,7 +41,7 @@ vector_result_t vector_set(vector_t *vector, size_t index, void *value);
 vector_result_t vector_get(vector_t *vector, size_t index);
 vector_result_t vector_pop(vector_t *vector);
 vector_result_t vector_clear(vector_t *vector);
-vector_result_t vector_free(vector_t *vector);
+vector_result_t vector_destroy(vector_t *vector);
 
 // Inline methods
 static inline size_t vector_size(const vector_t *vector) {

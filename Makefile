@@ -8,7 +8,7 @@ SRC_DIR = src
 OBJ_DIR = obj
 
 TARGET = usage
-LIB_OBJS = $(OBJ_DIR)/vector.o
+LIB_OBJS = $(OBJ_DIR)/vector.o $(OBJ_DIR)/map.o
 PROG_OBJS = $(OBJ_DIR)/usage.o
 
 .PHONY: all clean

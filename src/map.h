@@ -56,6 +56,18 @@ extern "C" {
 map_result_t map_new();
 map_result_t map_add(map_t *map, const char *key, void *value);
 map_result_t map_get(const map_t *map, const char *key);
+map_result_t map_remove(map_t *map, const char *key);
+map_result_t map_clear(map_t *map);
+map_result_t map_destroy(map_t *map);
+
+// Inline methods
+static inline size_t map_size(const map_t *map) {
+    return map ? map->size : 0;
+}
+
+static inline size_t map_capacity(const map_t *map) {
+    return map ? map->capacity : 0;
+}
 
 #ifdef __cplusplus
 }
