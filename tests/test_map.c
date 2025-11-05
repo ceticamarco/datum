@@ -33,13 +33,13 @@ void test_map_add() {
     assert(res.status == MAP_OK);
     map_t *map = res.value.map;
 
-    int x = 42, y = 84;
+    const int x = 42, y = 84;
     
-    map_result_t x_res = map_add(map, "key1", &x);
+    map_result_t x_res = map_add(map, "key1", (void*)&x);
     assert(x_res.status == MAP_OK);
     assert(map_size(map) == 1);
 
-    map_result_t y_res = map_add(map, "key2", &y);
+    map_result_t y_res = map_add(map, "key2", (void*)&y);
     assert(y_res.status == MAP_OK);
     assert(map_size(map) == 2);
 
@@ -74,8 +74,8 @@ void test_map_get() {
     assert(res.status == MAP_OK);
     map_t *map = res.value.map;
 
-    int val = 123;
-    map_add(map, "test", &val);
+    const int val = 123;
+    map_add(map, "test", (void*)&val);
 
     map_result_t get_res = map_get(map, "test");
     assert(get_res.status == MAP_OK);
@@ -196,7 +196,7 @@ void test_map_clear() {
     assert(res.status == MAP_OK);
     map_t *map = res.value.map;
 
-    int x = 10, y = 20, z = 30;
+    const int x = 10, y = 20, z = 30;
 
     map_add(map, "x", (void*)&x);
     map_add(map, "y", (void*)&y);
@@ -272,16 +272,16 @@ void test_map_struct() {
     assert(res.status == MAP_OK);
     map_t *map = res.value.map;
 
-    Person bob = { "Bob", "Miller", 23 };
-    Person alice = { "Alice", "Davis", 21 };
+    const Person bob = { "Bob", "Miller", 23 };
+    const Person alice = { "Alice", "Davis", 21 };
 
-    map_add(map, "af94rt", &bob);
-    map_add(map, "b910o5", &alice);
+    map_add(map, "af94rt", (void*)&bob);
+    map_add(map, "b910o5", (void*)&alice);
 
     map_result_t get_res = map_get(map, "af94rt");
     assert(get_res.status == MAP_OK);
 
-    Person *retr = (Person*)get_res.value.element;
+    const Person *retr = (const Person*)get_res.value.element;
     assert(!strcmp(retr->name, "Bob"));
     assert(!strcmp(retr->surname, "Miller"));
     assert(retr->age == 23);
@@ -289,7 +289,7 @@ void test_map_struct() {
     get_res = map_get(map, "b910o5");
     assert(get_res.status == MAP_OK);
 
-    retr = (Person*)get_res.value.element;
+    retr = (const Person*)get_res.value.element;
     assert(!strcmp(retr->name, "Alice"));
     assert(!strcmp(retr->surname, "Davis"));
     assert(retr->age == 21);
