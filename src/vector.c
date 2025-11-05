@@ -20,6 +20,13 @@ static vector_result_t vector_resize(vector_t *vector);
 vector_result_t vector_new(size_t size, size_t data_size) {
     vector_result_t result = {0};
 
+    if (size == 0) {
+        result.status = VECTOR_ERR_ALLOCATE;
+        SET_MSG(result, "Invalid vector size");
+
+        return result;
+    }
+
     // Allocate a new vector
     vector_t *vector = malloc(sizeof(vector_t));
     if (vector == NULL) {
