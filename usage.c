@@ -1,4 +1,20 @@
-#define SEP(SIZE) { for (size_t i = 0; i < SIZE; i++) { printf("="); }; puts("\n"); }
+/*
+ * Sample usage of the Datum library.
+ *
+ * This program is a complete example on how to use Datum
+ * with *verbose* error checking. For a more minimal usage, you may want to ignore
+ * return messages/codes and get straight to the actual result. See the early
+ * part of the README.md file for such example (use it at your own risk).
+ *
+ * Developed by Marco Cetica (c) 2025, <email@marcocetica.com>
+ *
+ */
+#define SEP(SIZE) do { \
+    for (size_t i = 0; i < SIZE; i++) { \
+        printf("="); \
+    }; \
+    puts("\n"); \
+} while(0)
 
 #include <stdio.h>
 
@@ -14,7 +30,7 @@ int main(void) {
     st = vector_usage();
     if (st) { return st; }
 
-    SEP(50)
+    SEP(50);
 
     st = map_usage();
     if (st) { return st; }

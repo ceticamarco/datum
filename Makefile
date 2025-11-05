@@ -8,26 +8,29 @@ OBJ_DIR = obj
 TESTS_SRC = tests
 
 TARGET = usage
-TEST_TARGET = test_vector
+TEST_V_TARGET = test_vector
+TEST_M_TARGET = test_map
 
 LIB_OBJS = $(OBJ_DIR)/vector.o $(OBJ_DIR)/map.o
 PROG_OBJS = $(OBJ_DIR)/usage.o
-TESTS_OBJS = $(OBJ_DIR)/test_vector.o
 
 .PHONY: all clean
 
-all: $(TARGET) $(TEST_TARGET)
+all: $(TARGET) $(TEST_V_TARGET) $(TEST_M_TARGET)
 
 $(TARGET): $(PROG_OBJS) $(LIB_OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
 
-$(TEST_TARGET): $(TESTS_OBJS) $(OBJ_DIR)/vector.o
+$(TEST_V_TARGET): $(OBJ_DIR)/test_vector.o $(OBJ_DIR)/vector.o
+	$(CC) $(CFLAGS) -o $@ $^
+
+$(TEST_M_TARGET): $(OBJ_DIR)/test_map.o $(OBJ_DIR)/map.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(OBJ_DIR)/%.o: %.c | $(OBJ_DIR)
+$(OBJ_DIR)/usage.o: usage.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(OBJ_DIR)/%.o: $(TESTS_SRC)/%.c | $(OBJ_DIR)
@@ -37,4 +40,4 @@ $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
 
 clean:
-	rm -rf $(OBJ_DIR) $(TARGET) $(TEST_TARGET)
+	rm -rf $(OBJ_DIR) $(TARGET) $(TEST_V_TARGET) $(TEST_M_TARGET)

@@ -1,5 +1,5 @@
 /*
- * Unit tests for Vector
+ * Unit tests for Vector data type
 */
 
 #define TEST(NAME) do { \
@@ -48,7 +48,7 @@ void test_vector_push() {
 
     vector_result_t y_res = vector_push(v, &y);
     assert(y_res.status == VECTOR_OK);
-    assert(vector_size(v) == 1);
+    assert(vector_size(v) == 2);
 
     vector_destroy(v);
 }
@@ -274,6 +274,7 @@ int main(void) {
 
     TEST(vector_new);
     TEST(vector_new_zcap);
+    TEST(vector_push);
     TEST(vector_push_realloc);
     TEST(vector_get);
     TEST(vector_get_ofb);
