@@ -166,7 +166,7 @@ void test_map_remove() {
     assert(rm_res.status == MAP_OK);
     assert(map_size(map) == 1);
 
-    // Check whether the 'x' and 'y' keysx is still there
+    // Check whether the 'x' and 'y' keys are still there
     map_result_t get_res = map_get(map, "x");
     assert(get_res.status != MAP_OK);
 

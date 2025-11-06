@@ -1,0 +1,17 @@
+name: datum
+on:
+  push:
+    branch: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Datum
+        run: |
+          make clean all
+      - name: Run unit tests
+        run: |
+          ./test_vector && ./test_map  
