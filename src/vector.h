@@ -15,7 +15,7 @@ typedef enum {
 } vector_status_t;
 
 typedef struct {
-    size_t count;
+    size_t size;
     size_t capacity;
     size_t data_size;
     void *elements;
@@ -30,6 +30,14 @@ typedef struct {
     } value;
 } vector_result_t;
 
+typedef enum {
+    VECTOR_ORDER_LT = 0x0,
+    VECTOR_ORDER_EQ,
+    VECTOR_ORDER_GT
+} vector_order_t;
+
+typedef vector_order_t (*vector_cmp_fn)(const void *x, const void *y);
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -39,13 +47,14 @@ vector_result_t vector_new(size_t size, size_t data_size);
 vector_result_t vector_push(vector_t *vector, void *value);
 vector_result_t vector_set(vector_t *vector, size_t index, void *value);
 vector_result_t vector_get(vector_t *vector, size_t index);
+vector_result_t vector_sort(vector_t *vector, vector_cmp_fn cmp);
 vector_result_t vector_pop(vector_t *vector);
 vector_result_t vector_clear(vector_t *vector);
 vector_result_t vector_destroy(vector_t *vector);
 
 // Inline methods
 static inline size_t vector_size(const vector_t *vector) {
-    return vector ? vector->count : 0;
+    return vector ? vector->size : 0;
 }
 
 static inline size_t vector_capacity(const vector_t *vector) {

@@ -104,6 +104,206 @@ void test_vector_get_ofb() {
     vector_destroy(v);
 }
 
+// Sort integers in ascending order
+vector_order_t cmp_int_asc(const void *x, const void *y) {
+    int x_int = *(const int*)x;
+    int y_int = *(const int*)y;
+
+    if (x_int < y_int) return VECTOR_ORDER_LT;
+    if (x_int > y_int) return VECTOR_ORDER_GT;
+
+    return VECTOR_ORDER_EQ;
+}
+
+vector_order_t cmp_int_desc(const void *x, const void *y) {
+    return cmp_int_asc(y, x);
+}
+
+void test_vector_sort_int_asc() {
+    vector_result_t res = vector_new(5, sizeof(int));
+
+    assert(res.status == VECTOR_OK);
+    vector_t *v = res.value.vector;
+
+    int values[] = { 25, 4, 12, -7, 25, 71, 1, 6 };
+    for (size_t idx = 0; idx < 8; idx++) {
+        vector_push(v, &values[idx]);
+    }
+
+    vector_result_t sort_res = vector_sort(v, cmp_int_asc);
+    assert(sort_res.status == VECTOR_OK);
+
+    const int expected[] = { -7, 1, 4, 6, 12, 25, 25, 71 };
+    for (size_t idx = 0; idx < vector_size(v); idx++) {
+        int *val = (int*)vector_get(v, idx).value.element;
+        assert(*val == expected[idx]);
+    }
+
+    vector_destroy(v);
+}
+
+void test_vector_sort_int_desc() {
+    vector_result_t res = vector_new(5, sizeof(int));
+
+    assert(res.status == VECTOR_OK);
+    vector_t *v = res.value.vector;
+
+    int values[] = { 25, 4, 12, -7, 25, 71, 1, 6 };
+    for (size_t idx = 0; idx < 8; idx++) {
+        vector_push(v, &values[idx]);
+    }
+
+    vector_result_t sort_res = vector_sort(v, cmp_int_desc);
+    assert(sort_res.status == VECTOR_OK);
+
+    const int expected[] = { 71, 25, 25, 12, 6, 4, 1, -7 };
+    for (size_t idx = 0; idx < vector_size(v); idx++) {
+        int *val = (int*)vector_get(v, idx).value.element;
+        assert(*val == expected[idx]);
+    }
+
+    vector_destroy(v);
+}
+
+// Sort strings in descending order
+vector_order_t cmp_string_desc(const void *x, const void *y) {
+    const char *x_str = *(const char* const*)x;
+    const char *y_str = *(const char* const*)y;
+
+    // strcmp() returns an integer indicating the result of the comparison, as follows:
+    //  - 0, if the s1 and s2 are equal;
+    //  - a negative value if s1 is less than s2;
+    //  - a positive value if s1 is greater than s2.
+    // for descending order, just invert the result
+    const int result = strcmp(x_str, y_str);
+
+    if (result < 0) return VECTOR_ORDER_GT;
+    if (result > 0) return VECTOR_ORDER_LT;
+
+    return VECTOR_ORDER_EQ;
+}
+
+void test_vector_sort_string() {
+    vector_result_t res = vector_new(5, sizeof(char*));
+
+    assert(res.status == VECTOR_OK);
+    vector_t *v = res.value.vector;
+
+    const char *values[] = { "embedded", "system-programming", "foo", "bar", "hello", "world!" };
+    for (size_t idx = 0; idx < 6; idx++) {
+        vector_push(v, &values[idx]);
+    }
+
+    vector_result_t sort_res = vector_sort(v, cmp_string_desc);
+    assert(sort_res.status == VECTOR_OK);
+
+    const char *expected[] = { "world!", "system-programming", "hello", "foo", "embedded", "bar"};
+    for (size_t idx = 0; idx < vector_size(v); idx++) {
+        const char *val = *(const char**)vector_get(v, idx).value.element;
+        assert(!strcmp(val, expected[idx]));
+    }
+
+    vector_destroy(v);
+}
+
+// Sort vector with custom data type
+typedef struct {
+    char name[256];
+    int age;
+} Person;
+
+vector_order_t cmp_person_by_age(const void *x, const void *y) {
+    const Person *x_person = (const Person*)x;
+    const Person *y_person = (const Person*)y;
+
+    if (x_person->age < y_person->age) return VECTOR_ORDER_LT;
+    if (x_person->age > y_person->age) return VECTOR_ORDER_GT;
+
+    return VECTOR_ORDER_EQ;
+}
+
+vector_order_t cmp_person_by_name(const void *x, const void *y) {
+    const Person *x_person = (const Person*)x;
+    const Person *y_person = (const Person*)y;
+
+    const int result = strcmp(x_person->name, y_person->name);
+
+    if(result < 0) return VECTOR_ORDER_LT;
+    if(result > 0) return VECTOR_ORDER_GT;
+    
+    return VECTOR_ORDER_EQ;
+}
+
+void test_vector_sort_struct_by_age() {
+    vector_result_t res = vector_new(5, sizeof(Person));
+
+    assert(res.status == VECTOR_OK);
+    vector_t *people = res.value.vector;
+
+    Person p1 = { .name = "Bob", .age = 45 };
+    Person p2 = { .name = "Alice", .age = 28 };
+    Person p3 = { .name = "Marco", .age = 25 };
+
+    vector_push(people, &p1);
+    vector_push(people, &p2);
+    vector_push(people, &p3);
+
+    vector_result_t sort_res = vector_sort(people, cmp_person_by_age);
+    assert(sort_res.status == VECTOR_OK);
+
+    Person expected[] = {
+        { .name = "Marco", .age = 25 },
+        { .name = "Alice", .age = 28 },
+        { .name = "Bob", .age = 45 }
+    };
+
+    for (size_t idx = 0; idx < vector_size(people); idx++) {
+        Person *p = (Person*)vector_get(people, idx).value.element;
+        assert(!strcmp(p->name, expected[idx].name));
+        assert(p->age == expected[idx].age);
+    }
+
+    vector_destroy(people);
+}
+
+void test_vector_sort_struct_by_name() {
+    vector_result_t res = vector_new(5, sizeof(Person));
+
+    assert(res.status == VECTOR_OK);
+    vector_t *people = res.value.vector;
+
+    Person p1 = { .name = "Sophia", .age = 45 };
+    Person p2 = { .name = "Robert", .age = 28 };
+    Person p3 = { .name = "Barbara", .age = 25 };
+    Person p4 = { .name = "Christopher", .age = 65 };
+    Person p5 = { .name = "Paul", .age = 53 };
+
+    vector_push(people, &p1);
+    vector_push(people, &p2);
+    vector_push(people, &p3);
+    vector_push(people, &p4);
+    vector_push(people, &p5);
+
+    vector_result_t sort_res = vector_sort(people, cmp_person_by_name);
+    assert(sort_res.status == VECTOR_OK);
+
+    Person expected[] = {
+        { .name = "Barbara", .age = 25 },
+        { .name = "Christopher", .age = 65 },
+        { .name = "Paul", .age = 53 },
+        { .name = "Robert", .age = 28 },
+        { .name = "Sophia", .age = 45 }
+    };
+
+    for (size_t idx = 0; idx < vector_size(people); idx++) {
+        Person *p = (Person*)vector_get(people, idx).value.element;
+        assert(!strcmp(p->name, expected[idx].name));
+        assert(p->age == expected[idx].age);
+    }
+
+    vector_destroy(people);
+}
+
 // Set vector element
 void test_vector_set() {
     vector_result_t res = vector_new(5, sizeof(int));
@@ -123,7 +323,7 @@ void test_vector_set() {
     vector_destroy(v);
 }
 
-// Set vector elemement out of bounds
+// Set vector element out of bounds
 void test_vector_set_ofb() {
     vector_result_t res = vector_new(5, sizeof(int));
 
@@ -278,6 +478,11 @@ int main(void) {
     TEST(vector_push_realloc);
     TEST(vector_get);
     TEST(vector_get_ofb);
+    TEST(vector_sort_int_asc);
+    TEST(vector_sort_int_desc);
+    TEST(vector_sort_string);
+    TEST(vector_sort_struct_by_age);
+    TEST(vector_sort_struct_by_name);
     TEST(vector_set);
     TEST(vector_set_ofb);
     TEST(vector_pop);

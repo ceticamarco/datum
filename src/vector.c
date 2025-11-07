@@ -7,8 +7,11 @@
 
 #include "vector.h"
 
-// Internal method to increase vector size
+// Internal methods
 static vector_result_t vector_resize(vector_t *vector);
+static void swap(void *x, void *y, size_t size);
+static size_t partition(void *base, size_t low, size_t high, size_t size, vector_cmp_fn cmp);
+static void quicksort(void *base, size_t low, size_t high, size_t size, vector_cmp_fn cmp);
 
 /**
  * vector_new
@@ -37,7 +40,7 @@ vector_result_t vector_new(size_t size, size_t data_size) {
     }
 
     // Initialize vector
-    vector->count = 0;
+    vector->size = 0;
     vector->capacity = size;
     vector->data_size = data_size;
     vector->elements = calloc(size, data_size);
@@ -95,6 +98,73 @@ vector_result_t vector_resize(vector_t *vector) {
 }
 
 /**
+ * swap
+ *  @x: first element
+ *  @y: second element
+ * 
+ *  Swaps @x and @y
+ */
+void swap(void *x, void *y, size_t size) {
+    uint8_t temp[size];
+
+    memcpy(temp, x, size);
+    memcpy(x, y, size);
+    memcpy(y, temp, size);
+}
+
+/**
+ * partition
+ *  @base: the array/partition
+ *  @low: lower index
+ *  @high: higher index
+ *  @size: data size
+ *  @cmp: comparison function
+ * 
+ *  Divides an array into two partitions
+ * 
+ *  Returns the pivot index
+ */
+size_t partition(void *base, size_t low, size_t high, size_t size, vector_cmp_fn cmp) {
+    uint8_t *arr = (uint8_t*)base;
+    void *pivot = arr + (high * size);
+    size_t i = low;
+
+    for (size_t j = low; j < high; j++) {
+        vector_order_t order = cmp(arr + (j * size), pivot);
+
+        if (order == VECTOR_ORDER_LT || order == VECTOR_ORDER_EQ) {
+            swap(arr + (i * size), arr + (j * size), size);
+            i++;
+        }
+    }
+
+    swap(arr + (i * size), arr + (high * size), size);
+
+    return i;
+}
+
+/**
+ * quicksort
+ *  @base: the base array/partition
+ *  @low: lower index
+ *  @high: higher index
+ *  @size: data size
+ *  @cmp: comparision function
+ * 
+ *  Recursively sorts an array/partition using the Quicksort algorithm
+ */
+void quicksort(void *base, size_t low, size_t high, size_t size, vector_cmp_fn cmp) {
+    if (low < high) {
+        const size_t pivot = partition(base, low, high, size, cmp);
+
+        if (pivot > 0) {
+            quicksort(base, low, pivot - 1, size, cmp);
+        }
+        quicksort(base, pivot + 1, high, size, cmp);
+    }
+}
+
+/**
  * vector_push
  *  @vector: a non-null vector
  *  @value: a generic value to add to the vector
@@ -114,7 +184,7 @@ vector_result_t vector_push(vector_t *vector, void *value) {
     }
 
     // Check whether vector has enough space available
-    if (vector->capacity == vector->count) {
+    if (vector->capacity == vector->size) {
         result = vector_resize(vector);
         if (result.status != VECTOR_OK) {
             return result;
@@ -122,7 +192,7 @@ vector_result_t vector_push(vector_t *vector, void *value) {
     }
 
     // Calculate destination memory address
-    uint8_t *destination_addr = (uint8_t*)vector->elements + (vector->count * vector->data_size);
+    uint8_t *destination_addr = (uint8_t*)vector->elements + (vector->size * vector->data_size);
 
     // Append @value to the data structure according to its data type
     if (vector->data_size == sizeof(int)) {
@@ -138,7 +208,7 @@ vector_result_t vector_push(vector_t *vector, void *value) {
     }
 
     // Increase elements count
-    vector->count++;
+    vector->size++;
 
     result.status = VECTOR_OK;
     SET_MSG(result, "Value successfully added");
@@ -166,7 +236,7 @@ vector_result_t vector_set(vector_t *vector, size_t index, void *value) {
         return result;
     }
 
-    if (index >= vector->count) {
+    if (index >= vector->size) {
         result.status = VECTOR_ERR_OVERFLOW;
         SET_MSG(result, "Index out of bounds");
 
@@ -211,7 +281,7 @@ vector_result_t vector_get(vector_t *vector, size_t index) {
         return result;
     }
 
-    if (index >= vector->count) {
+    if (index >= vector->size) {
         result.status = VECTOR_ERR_OVERFLOW;
         SET_MSG(result, "Index out of bounds");
 
@@ -221,6 +291,48 @@ vector_result_t vector_get(vector_t *vector, size_t index) {
     result.status = VECTOR_OK;
     SET_MSG(result, "Value successfully retrieved");
     result.value.element = (uint8_t *)vector->elements + (index * vector->data_size);
+
+    return result;
+}
+
+/**
+ * vector_sort
+ *  @vector: a non-null vector
+ *  @cmp: a user-defined comparison function returning vector_order_t
+ * 
+ *  Sorts @vector using Quicksort algorithm and the @cmp comparison function
+ * 
+ *  Returns a vecto_result_t data type
+ */
+vector_result_t vector_sort(vector_t *vector, vector_cmp_fn cmp) {
+    vector_result_t result = {0};
+
+    if (vector == NULL) {
+        result.status = VECTOR_ERR_INVALID;
+        SET_MSG(result, "Invalid vector");
+
+        return result;
+    }
+
+    if (cmp == NULL) {
+        result.status = VECTOR_ERR_INVALID;
+        SET_MSG(result, "Invalid comparison function");
+
+        return result;
+    }
+
+    // The vector is already sorted
+    if (vector->size <= 1) {
+        result.status = VECTOR_OK;
+        SET_MSG(result, "Vector successfully sorted");
+
+        return result;
+    }
+
+    quicksort(vector->elements, 0, vector->size - 1, vector->data_size, cmp);
+
+    result.status = VECTOR_OK;
+    SET_MSG(result, "Vector successfully sorted");
 
     return result;
 }
@@ -244,7 +356,7 @@ vector_result_t vector_pop(vector_t *vector) {
         return result;
     }
 
-    if (vector->count == 0) {
+    if (vector->size == 0) {
         result.status = VECTOR_ERR_UNDERFLOW;
         SET_MSG(result, "Vector is empty");
 
@@ -252,14 +364,14 @@ vector_result_t vector_pop(vector_t *vector) {
     }
     
     // Pop an element from the vector
-    const size_t index = (vector->count - 1);
+    const size_t index = (vector->size - 1);
     vector_result_t popped_res = vector_get(vector, index);
 
     if (popped_res.status != VECTOR_OK) {
         return popped_res;
     }
 
-    vector->count--;
+    vector->size--;
 
     result.status = VECTOR_OK;
     SET_MSG(result, "Value successfully popped");
@@ -286,7 +398,7 @@ vector_result_t vector_clear(vector_t *vector) {
         return result;
     }
 
-    vector->count = 0;
+    vector->size = 0;
 
     result.status = VECTOR_OK;
     SET_MSG(result, "Vector successfully cleared");
