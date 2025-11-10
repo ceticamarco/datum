@@ -54,8 +54,8 @@ vector_order_t cmp_int_desc(const void *x, const void *y) {
 }
 
 int vector_usage() {
-    // Create a vector of 5 integers
-    vector_result_t res = vector_new(5, sizeof(int));
+    // Create a vector of 3 integers
+    vector_result_t res = vector_new(3, sizeof(int));
     if (res.status != VECTOR_OK) {
         printf("Error while creating vector: %s\n", res.message);
 
@@ -64,8 +64,8 @@ int vector_usage() {
 
     vector_t *vector = res.value.vector;
 
-    // Push some values
-    for (int idx = 0; idx <= 5; idx++) {
+    // Push some values to trigger reallocation
+    for (int idx = 0; idx < 5; idx++) {
         vector_result_t add_res = vector_push(vector, &idx);
         if (add_res.status != VECTOR_OK) {
             printf("Error while adding elements: %s\n", add_res.message);
@@ -76,7 +76,7 @@ int vector_usage() {
 
     // Print vector size and capacity
     printf("Vector size (should be 5): %zu\n", vector_size(vector));
-    printf("Vector capacity (should be >= 5): %zu\n\n", vector_capacity(vector));
+    printf("Vector capacity (should be > 5): %zu\n\n", vector_capacity(vector));
 
     // Print the whole vector
     for (size_t idx = 0; idx < vector_size(vector); idx++) {

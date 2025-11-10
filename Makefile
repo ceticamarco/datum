@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -Werror -pedantic-errors -fstack-protector-strong \
 	-fsanitize=address -fsanitize=undefined -fstack-clash-protection \
-	-Wwrite-strings -std=c99
+	-Wwrite-strings -g -std=c99
 
 SRC_DIR = src
 OBJ_DIR = obj

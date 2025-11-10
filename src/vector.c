@@ -70,18 +70,18 @@ vector_result_t vector_new(size_t size, size_t data_size) {
 vector_result_t vector_resize(vector_t *vector) {
     vector_result_t result = {0};
 
-    size_t old_capacity = vector->capacity;
-    vector->capacity = (old_capacity > 0 ? ((old_capacity * 3) / 2) : 1);
+    const size_t old_capacity = vector->capacity;
+    const size_t new_capacity = old_capacity > 0 ? old_capacity * 2 : 1;
 
     // Check for stack overflow errors
-    if (vector->capacity > SIZE_MAX / vector->data_size) {
+    if (new_capacity > SIZE_MAX / vector->data_size) {
         result.status = VECTOR_ERR_OVERFLOW;
         SET_MSG(result, "Exceeded maximum size while resizing vector");
 
         return result;
     }
 
-    void *new_elements = realloc(vector->elements, (vector->capacity * vector->data_size));
+    void *new_elements = realloc(vector->elements, new_capacity * vector->data_size);
     if (new_elements == NULL) {
         result.status = VECTOR_ERR_ALLOCATE;
         SET_MSG(result, "Failed to reallocate memory for vector");
@@ -90,6 +90,7 @@ vector_result_t vector_resize(vector_t *vector) {
     }
 
     vector->elements = new_elements;
+    vector->capacity = new_capacity;
 
     result.status = VECTOR_OK;
     SET_MSG(result, "Vector successfully resized");
@@ -184,7 +185,7 @@ vector_result_t vector_push(vector_t *vector, void *value) {
     }
 
     // Check whether vector has enough space available
-    if (vector->capacity == vector->size) {
+    if (vector->size == vector->capacity) {
         result = vector_resize(vector);
         if (result.status != VECTOR_OK) {
             return result;

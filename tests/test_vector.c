@@ -55,7 +55,7 @@ void test_vector_push() {
 
 // Trigger vector reallocation
 void test_vector_push_realloc() {
-    vector_result_t res = vector_new(2, sizeof(int));
+    vector_result_t res = vector_new(1, sizeof(int));
 
     assert(res.status == VECTOR_OK);
     vector_t *v = res.value.vector;
@@ -66,7 +66,7 @@ void test_vector_push_realloc() {
     }
 
     assert(vector_size(v) == 5);
-    assert(vector_capacity(v) >= 5);
+    assert(vector_capacity(v) > 5);
 
     vector_destroy(v);
 }
