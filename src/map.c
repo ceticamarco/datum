@@ -1,5 +1,7 @@
 #define SET_MSG(result, msg) \
-    snprintf((char *)result.message, RESULT_MSG_SIZE, msg)
+    do { \
+        snprintf((char *)(result).message, RESULT_MSG_SIZE, "%s", (const char *)msg); \
+    } while (0)
 
 #include <stdio.h>
 #include <stdlib.h>

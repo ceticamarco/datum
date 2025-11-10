@@ -225,7 +225,7 @@ int map_usage() {
 
     // Print size and capacity
     printf("Map size (should be 2): %zu\n", map_size(map));
-    printf("Map capacity (should be >=2): %zu\n\n", map_capacity(map));
+    printf("Map capacity (should be > 2): %zu\n\n", map_capacity(map));
 
     // Retrieve keys
     map_result_t get_res = map_get(map, "x");
