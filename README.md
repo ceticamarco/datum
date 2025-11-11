@@ -106,7 +106,7 @@ This will compile the library as well as the `usage.c` file and the unit tests. 
 
 ## Documentation
 For additional details about this library (internal design, memory
-management, data ownership, etc.) go to the `docs/` folder.
+management, data ownership, etc.) go to the [docs folder](/docs).
 
 ## Unit tests
 Datum provides some unit tests for both the `Vector` and the `Map` data types. To run them, you can issue the following commands:
