@@ -30,6 +30,7 @@ typedef struct {
     uint8_t message[RESULT_MSG_SIZE];
     union {
         bigint_t *number;
+        uint8_t compare_status;
         char *string_num;
     } value;
 } bigint_result_t;
@@ -40,6 +41,10 @@ extern "C" {
 
 bigint_result_t bigint_from_int(long long value);
 bigint_result_t bigint_from_string(const char *string_num);
+bigint_result_t bigint_clone(const bigint_t *number);
+bigint_result_t bigint_compare(const bigint_t *x, const bigint_t *y);
+bigint_result_t bigint_add(const bigint_t *x, const bigint_t *y);
+bigint_result_t bigint_sub(const bigint_t *x, const bigint_t *y);
 bigint_result_t bigint_destroy(bigint_t *number);
 
 #ifdef __cplusplus
