@@ -21,6 +21,9 @@ static bigint_result_t bigint_trim_zeros(bigint_t *number);
 static bigint_result_t bigint_compare_abs(const bigint_t *x, const bigint_t *y);
 static bigint_result_t bigint_add_abs(const bigint_t *x, const bigint_t *y);
 static bigint_result_t bigint_sub_abs(const bigint_t *x, const bigint_t *y);
+static bigint_result_t bigint_shift_left(const bigint_t *num, size_t n);
+static bigint_result_t bigint_split(const bigint_t *num, size_t m, bigint_t **high, bigint_t **low);
+static bigint_result_t bigint_karatsuba(const bigint_t *x, const bigint_t *y);
 
 /**
  * bigint_from_int
@@ -158,9 +161,9 @@ static bigint_result_t bigint_trim_zeros(bigint_t *number) {
  *  @y: a non-null big integer
  *
  *  Compares absolute value of two big integers
- *  if |x| < |y| => -1
+ *  if |x| <  |y| => -1
  *  if |x| == |y| => 0
- *  if |x| > |y| => 1
+ *  if |x| >  |y| => 1
  *
  *  Returns a bigint_result_t data type
  */
@@ -584,6 +587,272 @@ bigint_result_t bigint_sub(const bigint_t *x, const bigint_t *y) {
 }
 
 /**
+ * bigint_shift_left
+ *  @num: a non-null big integer
+ *  @n: number of digits to shift
+ * 
+ *  Shift left by @n digits (i.e., multiply by BASE^n)
+ * 
+ *  Returns a bigint_result_t data type
+ */
+bigint_result_t bigint_shift_left(const bigint_t *num, size_t n) {
+    bigint_result_t result = {0};
+
+    if (n == 0) {
+        return bigint_clone(num);
+    }
+
+    bigint_t *shifted = malloc(sizeof(bigint_t));
+    if (shifted == NULL) {
+        result.status = BIGNUM_ERR_ALLOCATE;
+        SET_MSG(result, "Failed to allocate memory for big integer");
+
+        return result;
+    }
+
+    vector_result_t vec_res = vector_new(vector_size(num->digits) + n, sizeof(int));
+    if (vec_res.status != VECTOR_OK) {
+        free(shifted);
+        result.status = BIGNUM_ERR_ALLOCATE;
+        COPY_MSG(result, vec_res.message);
+
+        return result;
+    }
+
+    shifted->digits = vec_res.value.vector;
+    shifted->is_negative = num->is_negative;
+
+    // Add 'n' zeros by starting from the LSB
+    int zero = 0;
+    for (size_t idx = 0; idx < n; idx++) {
+        vector_result_t push_res = vector_push(shifted->digits, &zero);
+        if (push_res.status != VECTOR_OK) {
+            vector_destroy(shifted->digits);
+            free(shifted);
+            result.status = BIGNUM_ERR_INVALID;
+            COPY_MSG(result, push_res.message);
+
+            return result;
+        }
+    }
+
+    // Copy back original digits
+    for (size_t idx = 0; idx < vector_size(num->digits); idx++) {
+        vector_result_t get_res = vector_get(num->digits, idx);
+        if (get_res.status != VECTOR_OK) {
+            vector_destroy(shifted->digits);
+            free(shifted);
+            result.status = BIGNUM_ERR_INVALID;
+            COPY_MSG(result, get_res.message);
+
+            return result;
+        }
+
+        int *digit = (int*)get_res.value.element;
+        vector_result_t push_res = vector_push(shifted->digits, digit);
+        if (push_res.status != VECTOR_OK) {
+            vector_destroy(shifted->digits);
+            free(shifted);
+            result.status = BIGNUM_ERR_INVALID;
+            COPY_MSG(result, push_res.message);
+
+            return result;
+        }
+    }
+
+    result.value.number = shifted;
+    result.status = BIGNUM_OK;
+    SET_MSG(result, "Big integer shifted successfully");
+    
+    return result;
+}
+
+/**
+ * bigint_split
+ *  @num: a non-null big integers
+ *  @m: the pivot/position where to split
+ *  @high: digits \in [0, m)
+ *  @low: digits \in [m, size)
+ * 
+ *  Splits number into @high and @low parts at position @m
+ * 
+ *  Returns a bigint_result_t data type
+ */
+bigint_result_t bigint_split(const bigint_t *num, size_t m, bigint_t **high, bigint_t **low) {
+    bigint_result_t result = {0};
+
+    const size_t size = vector_size(num->digits);
+
+    // Low part: digits \in [0, m)
+    *low = malloc(sizeof(bigint_t));
+    if (low == NULL) {
+        result.status = BIGNUM_ERR_ALLOCATE;
+        SET_MSG(result, "Failed to allocate memory for big integer");
+
+        return result;
+    }
+
+    vector_result_t low_res = vector_new(m, sizeof(int));
+    if (low_res.status != VECTOR_OK) {
+        free(low);
+        result.status = BIGNUM_ERR_ALLOCATE;
+        COPY_MSG(result, low_res.message);
+
+        return result;
+    }
+
+    (*low)->digits = low_res.value.vector;
+    (*low)->is_negative = false;
+
+    for (size_t idx = 0; idx < m && idx < size; idx++) {
+        vector_result_t get_res = vector_get(num->digits, idx);
+        if (get_res.status != VECTOR_OK) {
+            vector_destroy((*low)->digits);
+            free(low);
+            result.status = BIGNUM_ERR_INVALID;
+            COPY_MSG(result, get_res.message);
+
+            return result;
+        }
+
+        int *digit = (int*)get_res.value.element;
+        vector_result_t push_res = vector_push((*low)->digits, digit);
+        if (push_res.status != VECTOR_OK) {
+            vector_destroy((*low)->digits);
+            free(low);
+            result.status = BIGNUM_ERR_INVALID;
+            COPY_MSG(result, push_res.message);
+
+            return result;
+        }
+    }
+
+    if (vector_size((*low)->digits) == 0) {
+        int zero = 0;
+        vector_result_t push_res = vector_push((*low)->digits, &zero);
+        if (push_res.status != VECTOR_OK) {
+            vector_destroy((*low)->digits);
+            free(low);
+            result.status = BIGNUM_ERR_INVALID;
+            COPY_MSG(result, push_res.message);
+
+            return result;
+        }
+    }
+
+    // First pass of zero trimming
+    bigint_result_t first_trim_res = bigint_trim_zeros(*low);
+    if (first_trim_res.status != BIGNUM_OK) {
+        vector_destroy((*low)->digits);
+        free(low);
+
+        return first_trim_res;
+    }
+
+    // High part: digits \in [m, size)
+    *high = malloc(sizeof(bigint_t));
+    if (low == NULL) {
+        vector_destroy((*low)->digits);
+        free(low);
+        result.status = BIGNUM_ERR_ALLOCATE;
+        SET_MSG(result, "Failed to allocate memory for big integer");
+
+        return result;
+    }
+
+    vector_result_t high_res = vector_new(size > m ? (size - m) : 1, sizeof(int));
+    if (high_res.status != VECTOR_OK) {
+        vector_destroy((*low)->digits);
+        free(low);
+        free(high);
+
+        result.status = BIGNUM_ERR_ALLOCATE;
+        COPY_MSG(result, low_res.message);
+
+        return result;
+    }
+
+    (*high)->digits = high_res.value.vector;
+    (*high)->is_negative = false;
+
+    if (size > m) {
+        for (size_t idx = m; idx < size; idx++) {
+            vector_result_t get_res = vector_get(num->digits, idx);
+            if (get_res.status != VECTOR_OK) {
+                vector_destroy((*low)->digits);
+                vector_destroy((*high)->digits);
+                free(low);
+                free(high);
+
+                result.status = BIGNUM_ERR_INVALID;
+                COPY_MSG(result, get_res.message);
+
+                return result;
+            }
+
+            int *digit = (int*)get_res.value.element;
+            vector_result_t push_res = vector_push((*high)->digits, digit);
+            if (push_res.status != VECTOR_OK) {
+                vector_destroy((*low)->digits);
+                vector_destroy((*high)->digits);
+                free(low);
+                free(high);
+
+                result.status = BIGNUM_ERR_INVALID;
+                COPY_MSG(result, push_res.message);
+
+                return result;
+            }
+        }
+    } else {
+        int zero = 0;
+        vector_result_t push_res = vector_push((*high)->digits, &zero);
+        if (push_res.status != VECTOR_OK) {
+            vector_destroy((*low)->digits);
+            vector_destroy((*high)->digits);
+            free(low);
+            free(high);
+
+            result.status = BIGNUM_ERR_INVALID;
+            COPY_MSG(result, push_res.message);
+
+            return result;
+        }
+    }
+
+    // Second pass of zero trimming
+    bigint_result_t second_trim_res = bigint_trim_zeros(*high);
+    if (second_trim_res.status != BIGNUM_OK) {
+        vector_destroy((*low)->digits);
+        vector_destroy((*high)->digits);
+        free(low);
+        free(high);
+
+        return second_trim_res;
+    }
+
+    result.status = BIGNUM_OK;
+    SET_MSG(result, "Big number successfully splitted");
+
+    return result;
+}
+
+/**
+ * bigint_karatusba
+ *  @x: a non-null big integer
+ *  @y: a non-null big integer
+ * 
+ *  Perform a multiplication using Karatsuba recursive algorithm
+ *  in O(n^{\log_2 3}) \approx O(n^{1.585})
+ */
+bigint_result_t bigint_karatsuba(const bigint_t *x, const bigint_t *y) {
+    const size_t x_size = vector_size(x->digits);
+    const size_t y_size = vector_size(y->digits);
+
+    // TODO: enough for today!
+}
+
+/**
  * bigint_from_string
  *  @string_num: an array of chars representing a number
  * 
@@ -611,7 +880,6 @@ bigint_result_t bigint_from_string(const char *string_num) {
 
     vector_result_t vec_res = vector_new(4, sizeof(int));
     if (vec_res.status != VECTOR_OK) {
-        vector_destroy(number->digits);
         free(number);        
         result.status = BIGNUM_ERR_ALLOCATE;
         COPY_MSG(result, vec_res.message);
