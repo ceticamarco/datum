@@ -9,6 +9,8 @@
         (result).message[RESULT_MSG_SIZE - 1] = '\0'; \
     } while (0)
 
+#define IS_DIGIT(c) ((c) >= '0') && ((c) <= '9')
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -23,6 +25,7 @@ static bigint_result_t bigint_add_abs(const bigint_t *x, const bigint_t *y);
 static bigint_result_t bigint_sub_abs(const bigint_t *x, const bigint_t *y);
 static bigint_result_t bigint_shift_left(const bigint_t *num, size_t n);
 static bigint_result_t bigint_split(const bigint_t *num, size_t m, bigint_t **high, bigint_t **low);
+static bigint_result_t bigint_karatsuba_base(const bigint_t *x, const bigint_t *y);
 static bigint_result_t bigint_karatsuba(const bigint_t *x, const bigint_t *y);
 
 /**
@@ -38,7 +41,7 @@ bigint_result_t bigint_from_int(long long value) {
 
     bigint_t *number = malloc(sizeof(bigint_t));
     if (number == NULL) {
-        result.status = BIGNUM_ERR_ALLOCATE;
+        result.status = BIGINT_ERR_ALLOCATE;
         SET_MSG(result, "Failed to allocate memory for big integer");
 
         return result;
@@ -47,7 +50,7 @@ bigint_result_t bigint_from_int(long long value) {
     vector_result_t vec_res = vector_new(4, sizeof(int));
     if (vec_res.status != VECTOR_OK) {
         free(number);
-        result.status = BIGNUM_ERR_ALLOCATE;
+        result.status = BIGINT_ERR_ALLOCATE;
         COPY_MSG(result, vec_res.message);
 
         return result;
@@ -64,7 +67,7 @@ bigint_result_t bigint_from_int(long long value) {
         if (push_res.status != VECTOR_OK) {
             vector_destroy(number->digits);
             free(number);
-            result.status = BIGNUM_ERR_INVALID;
+            result.status = BIGINT_ERR_INVALID;
             COPY_MSG(result, vec_res.message);
 
             return result;
@@ -76,7 +79,7 @@ bigint_result_t bigint_from_int(long long value) {
             if (push_res.status != VECTOR_OK) {
                 vector_destroy(number->digits);
                 free(number);
-                result.status = BIGNUM_ERR_INVALID;
+                result.status = BIGINT_ERR_INVALID;
                 COPY_MSG(result, vec_res.message);
 
                 return result;
@@ -86,7 +89,7 @@ bigint_result_t bigint_from_int(long long value) {
         }
     }
 
-    result.status = BIGNUM_OK;
+    result.status = BIGINT_OK;
     SET_MSG(result, "Big integer successfully created");
     result.value.number = number;
 
@@ -110,7 +113,7 @@ static bigint_result_t bigint_trim_zeros(bigint_t *number) {
         vector_result_t get_res = vector_get(number->digits, number_len - 1);
         if (get_res.status != VECTOR_OK) {
             vector_destroy(number->digits);
-            result.status = BIGNUM_ERR_INVALID;
+            result.status = BIGINT_ERR_INVALID;
             COPY_MSG(result, get_res.message);
 
             return result;
@@ -124,7 +127,7 @@ static bigint_result_t bigint_trim_zeros(bigint_t *number) {
         vector_result_t pop_res = vector_pop(number->digits);
         if (pop_res.status != VECTOR_OK) {
             vector_destroy(number->digits);
-            result.status = BIGNUM_ERR_INVALID;
+            result.status = BIGINT_ERR_INVALID;
             COPY_MSG(result, get_res.message);
 
             return result;
@@ -136,7 +139,7 @@ static bigint_result_t bigint_trim_zeros(bigint_t *number) {
         vector_result_t get_res = vector_get(number->digits, number_len - 1);
         if (get_res.status != VECTOR_OK) {
             vector_destroy(number->digits);
-            result.status = BIGNUM_ERR_INVALID;
+            result.status = BIGINT_ERR_INVALID;
             COPY_MSG(result, get_res.message);
 
             return result;
@@ -148,7 +151,7 @@ static bigint_result_t bigint_trim_zeros(bigint_t *number) {
         }
     }
 
-    result.status = BIGNUM_OK;
+    result.status = BIGINT_OK;
     SET_MSG(result, "Big integer successfully trimmed");
 
     return result;
@@ -175,19 +178,17 @@ bigint_result_t bigint_compare_abs(const bigint_t *x, const bigint_t *y) {
 
     if (x_size != y_size) {
         result.value.compare_status = (x_size > y_size) ? 1 : -1;
-        result.status = BIGNUM_OK;
+        result.status = BIGINT_OK;
         SET_MSG(result, "Big integer comparison was successful");
 
         return result;
     }
 
     // Start to compare from the MSB
-    for (int idx = (x_size - 1); idx >= 0; idx--) {
+    for (int idx = (int)(x_size - 1); idx >= 0; idx--) {
         vector_result_t x_get = vector_get(x->digits, idx);
         if (x_get.status != VECTOR_OK) {
-            vector_destroy(x->digits);
-            vector_destroy(y->digits);
-            result.status = BIGNUM_ERR_INVALID;
+            result.status = BIGINT_ERR_INVALID;
             COPY_MSG(result, x_get.message);
 
             return result;
@@ -195,9 +196,7 @@ bigint_result_t bigint_compare_abs(const bigint_t *x, const bigint_t *y) {
 
         vector_result_t y_get = vector_get(y->digits, idx);
         if (y_get.status != VECTOR_OK) {
-            vector_destroy(x->digits);
-            vector_destroy(y->digits);
-            result.status = BIGNUM_ERR_INVALID;
+            result.status = BIGINT_ERR_INVALID;
             COPY_MSG(result, y_get.message);
 
             return result;
@@ -208,7 +207,7 @@ bigint_result_t bigint_compare_abs(const bigint_t *x, const bigint_t *y) {
 
         if (*x_digit != *y_digit) {
             result.value.compare_status = (*x_digit > *y_digit) ? 1 : -1;
-            result.status = BIGNUM_OK;
+            result.status = BIGINT_OK;
             SET_MSG(result, "Big integer comparison was successful");
 
             return result;
@@ -216,7 +215,7 @@ bigint_result_t bigint_compare_abs(const bigint_t *x, const bigint_t *y) {
     }
 
     result.value.compare_status = 0;
-    result.status = BIGNUM_OK;
+    result.status = BIGINT_OK;
     SET_MSG(result, "Big integer comparison was successful");
 
     return result;
@@ -239,24 +238,21 @@ bigint_result_t bigint_compare(const bigint_t *x, const bigint_t *y) {
 
     if (x->is_negative != y->is_negative) {
         result.value.compare_status = x->is_negative ? -1 : 1;
-        result.status = BIGNUM_OK;
+        result.status = BIGINT_OK;
         SET_MSG(result, "Big integer comparison was successful");
 
         return result;
     }
     
     bigint_result_t cmp_res = bigint_compare_abs(x, y);
-    if (cmp_res.status != BIGNUM_OK) {
-        vector_destroy(x->digits);
-        vector_destroy(y->digits);
-
+    if (cmp_res.status != BIGINT_OK) {
         return cmp_res;
     }
     
-    const uint8_t abs_cmp = cmp_res.value.compare_status;
+    const int8_t abs_cmp = cmp_res.value.compare_status;
 
     result.value.compare_status = x->is_negative ? -abs_cmp : abs_cmp;
-    result.status = BIGNUM_OK;
+    result.status = BIGINT_OK;
     SET_MSG(result, "Big integer comparison was successful");
 
     return result;
@@ -276,7 +272,7 @@ bigint_result_t bigint_add_abs(const bigint_t *x, const bigint_t *y) {
 
     bigint_t *sum = malloc(sizeof(bigint_t));
     if (sum == NULL) {
-        result.status = BIGNUM_ERR_ALLOCATE;
+        result.status = BIGINT_ERR_ALLOCATE;
         SET_MSG(result, "Cannot allocate memory for big integer");
 
         return result;
@@ -288,7 +284,7 @@ bigint_result_t bigint_add_abs(const bigint_t *x, const bigint_t *y) {
     vector_result_t vec_res = vector_new(max_size + 1, sizeof(int));
     if (vec_res.status != VECTOR_OK) {
         free(sum);
-        result.status = BIGNUM_ERR_INVALID;
+        result.status = BIGINT_ERR_INVALID;
         COPY_MSG(result, vec_res.message);
 
         return result;
@@ -308,7 +304,7 @@ bigint_result_t bigint_add_abs(const bigint_t *x, const bigint_t *y) {
             if (get_res.status != VECTOR_OK) {
                 vector_destroy(sum->digits);
                 free(sum);
-                result.status = BIGNUM_ERR_INVALID;
+                result.status = BIGINT_ERR_INVALID;
                 COPY_MSG(result, get_res.message);
 
                 return result;
@@ -323,7 +319,7 @@ bigint_result_t bigint_add_abs(const bigint_t *x, const bigint_t *y) {
             if (get_res.status != VECTOR_OK) {
                 vector_destroy(sum->digits);
                 free(sum);
-                result.status = BIGNUM_ERR_INVALID;
+                result.status = BIGINT_ERR_INVALID;
                 COPY_MSG(result, get_res.message);
 
                 return result;
@@ -340,7 +336,7 @@ bigint_result_t bigint_add_abs(const bigint_t *x, const bigint_t *y) {
         if (push_res.status != VECTOR_OK) {
             vector_destroy(sum->digits);
             free(sum);
-            result.status = BIGNUM_ERR_INVALID;
+            result.status = BIGINT_ERR_INVALID;
             COPY_MSG(result, push_res.message);
 
             return result;
@@ -349,7 +345,7 @@ bigint_result_t bigint_add_abs(const bigint_t *x, const bigint_t *y) {
     }
 
     bigint_result_t trim_res = bigint_trim_zeros(sum);
-    if (trim_res.status != BIGNUM_OK) {
+    if (trim_res.status != BIGINT_OK) {
         vector_destroy(sum->digits);
         free(sum);
         
@@ -357,7 +353,7 @@ bigint_result_t bigint_add_abs(const bigint_t *x, const bigint_t *y) {
     }
 
     result.value.number = sum;
-    result.status = BIGNUM_OK;
+    result.status = BIGINT_OK;
     SET_MSG(result, "Big integers successfully added");
 
     return result;
@@ -377,7 +373,7 @@ bigint_result_t bigint_sub_abs(const bigint_t *x, const bigint_t *y) {
 
     bigint_t *difference = malloc(sizeof(bigint_t));
     if (difference == NULL) {
-        result.status = BIGNUM_ERR_ALLOCATE;
+        result.status = BIGINT_ERR_ALLOCATE;
         SET_MSG(result, "Cannot allocate memory for big integer");
 
         return result;
@@ -386,7 +382,7 @@ bigint_result_t bigint_sub_abs(const bigint_t *x, const bigint_t *y) {
     vector_result_t vec_res = vector_new(vector_size(x->digits), sizeof(int));
     if (vec_res.status != VECTOR_OK) {
         free(difference);
-        result.status = BIGNUM_ERR_INVALID;
+        result.status = BIGINT_ERR_INVALID;
         COPY_MSG(result, vec_res.message);
 
         return result;
@@ -402,7 +398,7 @@ bigint_result_t bigint_sub_abs(const bigint_t *x, const bigint_t *y) {
         if (x_get_res.status != VECTOR_OK) {
             vector_destroy(difference->digits);
             free(difference);
-            result.status = BIGNUM_ERR_INVALID;
+            result.status = BIGINT_ERR_INVALID;
             COPY_MSG(result, x_get_res.message);
 
             return result;
@@ -416,7 +412,7 @@ bigint_result_t bigint_sub_abs(const bigint_t *x, const bigint_t *y) {
             if (y_get_res.status != VECTOR_OK) {
                 vector_destroy(difference->digits);
                 free(difference);
-                result.status = BIGNUM_ERR_INVALID;
+                result.status = BIGINT_ERR_INVALID;
                 COPY_MSG(result, y_get_res.message);
 
                 return result;
@@ -438,7 +434,7 @@ bigint_result_t bigint_sub_abs(const bigint_t *x, const bigint_t *y) {
         if (push_res.status != VECTOR_OK) {
             vector_destroy(difference->digits);
             free(difference);
-            result.status = BIGNUM_ERR_INVALID;
+            result.status = BIGINT_ERR_INVALID;
             COPY_MSG(result, push_res.message);
 
             return result;
@@ -446,7 +442,7 @@ bigint_result_t bigint_sub_abs(const bigint_t *x, const bigint_t *y) {
     }
 
     bigint_result_t trim_res = bigint_trim_zeros(difference);
-    if (trim_res.status != BIGNUM_OK) {
+    if (trim_res.status != BIGINT_OK) {
         vector_destroy(difference->digits);
         free(difference);
         
@@ -454,7 +450,7 @@ bigint_result_t bigint_sub_abs(const bigint_t *x, const bigint_t *y) {
     }
 
     result.value.number = difference;
-    result.status = BIGNUM_OK;
+    result.status = BIGINT_OK;
     SET_MSG(result, "Big integers successfully subtracted");
 
     return result;
@@ -473,7 +469,7 @@ bigint_result_t bigint_add(const bigint_t *x, const bigint_t *y) {
     bigint_result_t result = {0};
 
     if (x == NULL || y == NULL) {
-        result.status = BIGNUM_ERR_INVALID;
+        result.status = BIGINT_ERR_INVALID;
         SET_MSG(result, "Invalid big integers");
 
         return result;
@@ -482,7 +478,7 @@ bigint_result_t bigint_add(const bigint_t *x, const bigint_t *y) {
     // Same sign: add absolute values
     if (x->is_negative == y->is_negative) {
         bigint_result_t sum_res = bigint_add_abs(x, y);
-        if (sum_res.status != BIGNUM_OK) {
+        if (sum_res.status != BIGINT_OK) {
             return sum_res;
         }
 
@@ -492,7 +488,7 @@ bigint_result_t bigint_add(const bigint_t *x, const bigint_t *y) {
         }
 
         result.value.number = sum;
-        result.status = BIGNUM_OK;
+        result.status = BIGINT_OK;
         SET_MSG(result, "Big integers successfully added");
 
         return result;
@@ -500,16 +496,16 @@ bigint_result_t bigint_add(const bigint_t *x, const bigint_t *y) {
 
     // Different signs: subtract smaller from larger
     bigint_result_t cmp_res = bigint_compare_abs(x, y);
-    if (cmp_res.status != BIGNUM_OK) {
+    if (cmp_res.status != BIGINT_OK) {
         return cmp_res;
     }
     
-    const uint8_t cmp = cmp_res.value.compare_status;
+    const int8_t cmp = cmp_res.value.compare_status;
     if (cmp == 0) {
         return bigint_from_int(0);
     } else if (cmp > 0) {
         bigint_result_t sub_res = bigint_sub_abs(x, y);
-        if (sub_res.status != BIGNUM_OK) {
+        if (sub_res.status != BIGINT_OK) {
             return sub_res;
         }
 
@@ -519,11 +515,11 @@ bigint_result_t bigint_add(const bigint_t *x, const bigint_t *y) {
         }
 
         result.value.number = sub;
-        result.status = BIGNUM_OK;
+        result.status = BIGINT_OK;
         SET_MSG(result, "Big integers successfully added");
     } else {
         bigint_result_t sub_res = bigint_sub_abs(y, x);
-        if (sub_res.status != BIGNUM_OK) {
+        if (sub_res.status != BIGINT_OK) {
             return sub_res;
         }
         
@@ -533,7 +529,7 @@ bigint_result_t bigint_add(const bigint_t *x, const bigint_t *y) {
         }
 
         result.value.number = sub;
-        result.status = BIGNUM_OK;
+        result.status = BIGINT_OK;
         SET_MSG(result, "Big integers successfully added");
     }
 
@@ -553,7 +549,7 @@ bigint_result_t bigint_sub(const bigint_t *x, const bigint_t *y) {
     bigint_result_t result = {0};
 
     if (x == NULL || y == NULL) {
-        result.status = BIGNUM_ERR_INVALID;
+        result.status = BIGINT_ERR_INVALID;
         SET_MSG(result, "Invalid big integers");
 
         return result;
@@ -564,7 +560,7 @@ bigint_result_t bigint_sub(const bigint_t *x, const bigint_t *y) {
      * x - y = x + (-y) 
      */
     bigint_result_t neg_y_res = bigint_clone(y);
-    if (neg_y_res.status != BIGNUM_OK) {
+    if (neg_y_res.status != BIGINT_OK) {
         return neg_y_res;
     }
     
@@ -572,7 +568,9 @@ bigint_result_t bigint_sub(const bigint_t *x, const bigint_t *y) {
     neg_y->is_negative = !neg_y->is_negative;
 
     bigint_result_t difference_res = bigint_add(x, neg_y);
-    if (difference_res.status != BIGNUM_OK) {
+    if (difference_res.status != BIGINT_OK) {
+        bigint_destroy(neg_y);
+
         return difference_res;
     }
     
@@ -580,8 +578,50 @@ bigint_result_t bigint_sub(const bigint_t *x, const bigint_t *y) {
     bigint_t *difference = difference_res.value.number;
 
     result.value.number = difference;
-    result.status = BIGNUM_OK;
+    result.status = BIGINT_OK;
     SET_MSG(result, "Big integers successfully subtracted");
+
+    return result;
+}
+
+/**
+ * bigint_prod
+ *  @x: a non-null big integer
+ *  @y: a non-null big integer
+ * 
+ *  Perform a multiplication between @a and @b
+ *  using Karatsuba's algorithm
+ * 
+ *  Returns a bigint_result_t data type
+ */
+bigint_result_t bigint_prod(const bigint_t *x, const bigint_t *y) {
+    bigint_result_t result = {0};
+
+    if (x == NULL || y == NULL) {
+        result.status = BIGINT_ERR_INVALID;
+        SET_MSG(result, "Invalid big integers");
+
+        return result;
+    }
+
+    bigint_result_t product_res = bigint_karatsuba(x, y);
+    if (product_res.status != BIGINT_OK) {
+        return product_res;
+    }
+
+    bigint_t *product = product_res.value.number;
+    product->is_negative = (x->is_negative != y->is_negative);
+
+    bigint_result_t trim_res = bigint_trim_zeros(product);
+    if (trim_res.status != BIGINT_OK) {
+        bigint_destroy(product);
+
+        return trim_res;
+    }
+
+    result.value.number = product;
+    result.status = BIGINT_OK;
+    SET_MSG(result, "Product between big integers was successful");
 
     return result;
 }
@@ -604,7 +644,7 @@ bigint_result_t bigint_shift_left(const bigint_t *num, size_t n) {
 
     bigint_t *shifted = malloc(sizeof(bigint_t));
     if (shifted == NULL) {
-        result.status = BIGNUM_ERR_ALLOCATE;
+        result.status = BIGINT_ERR_ALLOCATE;
         SET_MSG(result, "Failed to allocate memory for big integer");
 
         return result;
@@ -613,7 +653,7 @@ bigint_result_t bigint_shift_left(const bigint_t *num, size_t n) {
     vector_result_t vec_res = vector_new(vector_size(num->digits) + n, sizeof(int));
     if (vec_res.status != VECTOR_OK) {
         free(shifted);
-        result.status = BIGNUM_ERR_ALLOCATE;
+        result.status = BIGINT_ERR_ALLOCATE;
         COPY_MSG(result, vec_res.message);
 
         return result;
@@ -629,7 +669,7 @@ bigint_result_t bigint_shift_left(const bigint_t *num, size_t n) {
         if (push_res.status != VECTOR_OK) {
             vector_destroy(shifted->digits);
             free(shifted);
-            result.status = BIGNUM_ERR_INVALID;
+            result.status = BIGINT_ERR_INVALID;
             COPY_MSG(result, push_res.message);
 
             return result;
@@ -642,7 +682,7 @@ bigint_result_t bigint_shift_left(const bigint_t *num, size_t n) {
         if (get_res.status != VECTOR_OK) {
             vector_destroy(shifted->digits);
             free(shifted);
-            result.status = BIGNUM_ERR_INVALID;
+            result.status = BIGINT_ERR_INVALID;
             COPY_MSG(result, get_res.message);
 
             return result;
@@ -653,7 +693,7 @@ bigint_result_t bigint_shift_left(const bigint_t *num, size_t n) {
         if (push_res.status != VECTOR_OK) {
             vector_destroy(shifted->digits);
             free(shifted);
-            result.status = BIGNUM_ERR_INVALID;
+            result.status = BIGINT_ERR_INVALID;
             COPY_MSG(result, push_res.message);
 
             return result;
@@ -661,7 +701,7 @@ bigint_result_t bigint_shift_left(const bigint_t *num, size_t n) {
     }
 
     result.value.number = shifted;
-    result.status = BIGNUM_OK;
+    result.status = BIGINT_OK;
     SET_MSG(result, "Big integer shifted successfully");
     
     return result;
@@ -685,17 +725,17 @@ bigint_result_t bigint_split(const bigint_t *num, size_t m, bigint_t **high, big
 
     // Low part: digits \in [0, m)
     *low = malloc(sizeof(bigint_t));
-    if (low == NULL) {
-        result.status = BIGNUM_ERR_ALLOCATE;
+    if (*low == NULL) {
+        result.status = BIGINT_ERR_ALLOCATE;
         SET_MSG(result, "Failed to allocate memory for big integer");
 
         return result;
     }
 
-    vector_result_t low_res = vector_new(m, sizeof(int));
+    vector_result_t low_res = vector_new(m ? m : 1, sizeof(int));
     if (low_res.status != VECTOR_OK) {
-        free(low);
-        result.status = BIGNUM_ERR_ALLOCATE;
+        free(*low);
+        result.status = BIGINT_ERR_ALLOCATE;
         COPY_MSG(result, low_res.message);
 
         return result;
@@ -708,8 +748,8 @@ bigint_result_t bigint_split(const bigint_t *num, size_t m, bigint_t **high, big
         vector_result_t get_res = vector_get(num->digits, idx);
         if (get_res.status != VECTOR_OK) {
             vector_destroy((*low)->digits);
-            free(low);
-            result.status = BIGNUM_ERR_INVALID;
+            free(*low);
+            result.status = BIGINT_ERR_INVALID;
             COPY_MSG(result, get_res.message);
 
             return result;
@@ -719,8 +759,8 @@ bigint_result_t bigint_split(const bigint_t *num, size_t m, bigint_t **high, big
         vector_result_t push_res = vector_push((*low)->digits, digit);
         if (push_res.status != VECTOR_OK) {
             vector_destroy((*low)->digits);
-            free(low);
-            result.status = BIGNUM_ERR_INVALID;
+            free(*low);
+            result.status = BIGINT_ERR_INVALID;
             COPY_MSG(result, push_res.message);
 
             return result;
@@ -732,8 +772,8 @@ bigint_result_t bigint_split(const bigint_t *num, size_t m, bigint_t **high, big
         vector_result_t push_res = vector_push((*low)->digits, &zero);
         if (push_res.status != VECTOR_OK) {
             vector_destroy((*low)->digits);
-            free(low);
-            result.status = BIGNUM_ERR_INVALID;
+            free(*low);
+            result.status = BIGINT_ERR_INVALID;
             COPY_MSG(result, push_res.message);
 
             return result;
@@ -742,19 +782,19 @@ bigint_result_t bigint_split(const bigint_t *num, size_t m, bigint_t **high, big
 
     // First pass of zero trimming
     bigint_result_t first_trim_res = bigint_trim_zeros(*low);
-    if (first_trim_res.status != BIGNUM_OK) {
+    if (first_trim_res.status != BIGINT_OK) {
         vector_destroy((*low)->digits);
-        free(low);
+        free(*low);
 
         return first_trim_res;
     }
 
     // High part: digits \in [m, size)
     *high = malloc(sizeof(bigint_t));
-    if (low == NULL) {
+    if (*high == NULL) {
         vector_destroy((*low)->digits);
-        free(low);
-        result.status = BIGNUM_ERR_ALLOCATE;
+        free(*low);
+        result.status = BIGINT_ERR_ALLOCATE;
         SET_MSG(result, "Failed to allocate memory for big integer");
 
         return result;
@@ -763,10 +803,10 @@ bigint_result_t bigint_split(const bigint_t *num, size_t m, bigint_t **high, big
     vector_result_t high_res = vector_new(size > m ? (size - m) : 1, sizeof(int));
     if (high_res.status != VECTOR_OK) {
         vector_destroy((*low)->digits);
-        free(low);
-        free(high);
+        free(*low);
+        free(*high);
 
-        result.status = BIGNUM_ERR_ALLOCATE;
+        result.status = BIGINT_ERR_ALLOCATE;
         COPY_MSG(result, low_res.message);
 
         return result;
@@ -781,10 +821,10 @@ bigint_result_t bigint_split(const bigint_t *num, size_t m, bigint_t **high, big
             if (get_res.status != VECTOR_OK) {
                 vector_destroy((*low)->digits);
                 vector_destroy((*high)->digits);
-                free(low);
-                free(high);
+                free(*low);
+                free(*high);
 
-                result.status = BIGNUM_ERR_INVALID;
+                result.status = BIGINT_ERR_INVALID;
                 COPY_MSG(result, get_res.message);
 
                 return result;
@@ -795,10 +835,10 @@ bigint_result_t bigint_split(const bigint_t *num, size_t m, bigint_t **high, big
             if (push_res.status != VECTOR_OK) {
                 vector_destroy((*low)->digits);
                 vector_destroy((*high)->digits);
-                free(low);
-                free(high);
+                free(*low);
+                free(*high);
 
-                result.status = BIGNUM_ERR_INVALID;
+                result.status = BIGINT_ERR_INVALID;
                 COPY_MSG(result, push_res.message);
 
                 return result;
@@ -810,10 +850,10 @@ bigint_result_t bigint_split(const bigint_t *num, size_t m, bigint_t **high, big
         if (push_res.status != VECTOR_OK) {
             vector_destroy((*low)->digits);
             vector_destroy((*high)->digits);
-            free(low);
-            free(high);
+            free(*low);
+            free(*high);
 
-            result.status = BIGNUM_ERR_INVALID;
+            result.status = BIGINT_ERR_INVALID;
             COPY_MSG(result, push_res.message);
 
             return result;
@@ -822,17 +862,129 @@ bigint_result_t bigint_split(const bigint_t *num, size_t m, bigint_t **high, big
 
     // Second pass of zero trimming
     bigint_result_t second_trim_res = bigint_trim_zeros(*high);
-    if (second_trim_res.status != BIGNUM_OK) {
+    if (second_trim_res.status != BIGINT_OK) {
         vector_destroy((*low)->digits);
         vector_destroy((*high)->digits);
-        free(low);
-        free(high);
+        free(*low);
+        free(*high);
 
         return second_trim_res;
     }
 
-    result.status = BIGNUM_OK;
+    result.status = BIGINT_OK;
     SET_MSG(result, "Big number successfully splitted");
+
+    return result;
+}
+
+/**
+ * bigint_karatsuba_base
+ *  @x: a non-null big integer
+ *  @y: a non-null big integer
+ * 
+ *  Base case of the Karatsuba recursive algorithm
+ *  which uses a "grade school" multiplication.
+ *  Its complexity is O(n^2)
+ * 
+ *  Returns a bigint_result_t data type
+ */
+bigint_result_t bigint_karatsuba_base(const bigint_t *x, const bigint_t *y) {
+    bigint_result_t result = {0};
+
+    bigint_result_t prod_res = bigint_from_int(0);
+    if (prod_res.status != BIGINT_OK) {
+        result.status = BIGINT_ERR_ALLOCATE;
+        COPY_MSG(result, prod_res.message);
+
+        return result;        
+    }
+
+    bigint_t *product = prod_res.value.number;
+    const size_t x_size = vector_size(x->digits);
+    const size_t y_size = vector_size(y->digits);
+
+    for (size_t i = 0; i < x_size; i++) {
+        long long carry = 0;
+        
+        vector_result_t get_res = vector_get(x->digits, i);
+        if (get_res.status != VECTOR_OK) {
+            bigint_destroy(product);
+            result.status = BIGINT_ERR_INVALID;
+            COPY_MSG(result, get_res.message);
+
+            return result;
+        }
+
+        int *x_digit = (int*)get_res.value.element;
+        for (size_t j = 0; j < y_size || carry; j++) {
+            int *y_digit = NULL;
+            int *curr = NULL;
+
+            if (j < y_size) {
+                vector_result_t y_res = vector_get(y->digits, j);
+                if (y_res.status != VECTOR_OK) {
+                    bigint_destroy(product);
+                    result.status = BIGINT_ERR_INVALID;
+                    COPY_MSG(result, y_res.message);
+
+                    return result;
+                }
+
+                y_digit = (int*)y_res.value.element;
+            }
+
+            if ((i + j) < vector_size(product->digits)) {
+                vector_result_t curr_res = vector_get(product->digits, i + j);
+                if (curr_res.status != VECTOR_OK) {
+                    bigint_destroy(product);
+                    result.status = BIGINT_ERR_INVALID;
+                    COPY_MSG(result, curr_res.message);
+
+                    return result;
+                }
+
+                curr = (int*)curr_res.value.element;
+            }
+
+            long long partial_prod = carry;
+            if (curr) { partial_prod += *curr; }
+            if (y_digit) { partial_prod += (long long)(*x_digit) * (*y_digit); }
+
+            int new_digit =(int)(partial_prod % BIGINT_BASE);
+            carry = partial_prod / BIGINT_BASE;
+
+            if (curr) {
+                vector_result_t set_res = vector_set(product->digits, i + j, &new_digit);
+                if (set_res.status != VECTOR_OK) {
+                    bigint_destroy(product);
+                    result.status = BIGINT_ERR_INVALID;
+                    COPY_MSG(result, set_res.message);
+
+                    return result;                    
+                }
+            } else {
+                vector_result_t push_res = vector_push(product->digits, &new_digit);
+                if (push_res.status != VECTOR_OK) {
+                    bigint_destroy(product);
+                    result.status = BIGINT_ERR_INVALID;
+                    COPY_MSG(result, push_res.message);
+
+                    return result;                    
+                }
+            }
+        }
+    }
+
+    bigint_result_t trim_res = bigint_trim_zeros(product);
+    if (trim_res.status != BIGINT_OK) {
+        bigint_destroy(product);
+
+        return trim_res;
+    }
+
+    result.value.number = product;
+    result.status = BIGINT_OK;
+    SET_MSG(result, "Product between big integers was successful");
 
     return result;
 }
@@ -846,10 +998,194 @@ bigint_result_t bigint_split(const bigint_t *num, size_t m, bigint_t **high, big
  *  in O(n^{\log_2 3}) \approx O(n^{1.585})
  */
 bigint_result_t bigint_karatsuba(const bigint_t *x, const bigint_t *y) {
+    bigint_result_t result = {0};
+
     const size_t x_size = vector_size(x->digits);
     const size_t y_size = vector_size(y->digits);
 
-    // TODO: enough for today!
+    // Base case using "grade school" quadratic algorithm
+    if (x_size <= 32 || y_size <= 32) {
+        return bigint_karatsuba_base(x, y);
+    }
+
+    // Split the big integer at approximately half the size of the larger number
+    const size_t pivot = (x_size > y_size ? x_size : y_size) / 2;
+
+    // Split x = x1 * BASE^pivot + x0
+    bigint_t *x1 = NULL, *x0 = NULL;
+    bigint_result_t x_split_res = bigint_split(x, pivot, &x1, &x0);
+    if (x_split_res.status != BIGINT_OK) {
+        return x_split_res;
+    }
+
+    // Split y = y1 * BASE^pivot + y0
+    bigint_t *y1 = NULL, *y0 = NULL;
+    bigint_result_t y_split_res = bigint_split(y, pivot, &y1, &y0);
+    if (y_split_res.status != BIGINT_OK) {
+        bigint_destroy(x1); bigint_destroy(x0);
+        
+        return y_split_res;
+    }
+
+    // Perform karatsuba's trick
+    bigint_result_t z0_res = bigint_karatsuba(x0, y0); // x0 * y0
+    if (z0_res.status != BIGINT_OK) {
+        bigint_destroy(x1); bigint_destroy(x0);
+        bigint_destroy(y1); bigint_destroy(y0);
+
+        return z0_res;
+    }
+
+    bigint_result_t z2_res = bigint_karatsuba(x1, y1); // x1 * y1
+    if (z2_res.status != BIGINT_OK) {
+        bigint_destroy(x1); bigint_destroy(x0);
+        bigint_destroy(y1); bigint_destroy(y0);
+        bigint_destroy(z0_res.value.number);
+
+        return z2_res;
+    }
+
+    bigint_t *z0 = z0_res.value.number;
+    bigint_t *z2 = z2_res.value.number;
+
+    // z1 = (x0 + x1) * (y0 + y1) - z0 - z2
+    bigint_result_t x_sum_res = bigint_add(x0, x1);
+    if (x_sum_res.status != BIGINT_OK) {
+        bigint_destroy(x1); bigint_destroy(x0);
+        bigint_destroy(y1); bigint_destroy(y0);
+        bigint_destroy(z0); bigint_destroy(z2);
+
+        return x_sum_res;
+    }
+
+    bigint_t *x_sum = x_sum_res.value.number;
+
+    bigint_result_t y_sum_res = bigint_add(y0, y1);
+    if (y_sum_res.status != BIGINT_OK) {
+        bigint_destroy(x1); bigint_destroy(x0);
+        bigint_destroy(y1); bigint_destroy(y0);
+        bigint_destroy(z0); bigint_destroy(z2);
+        bigint_destroy(x_sum);
+
+        return y_sum_res;
+    }
+
+    bigint_t *y_sum = y_sum_res.value.number;
+
+    // (x0 + x1) * (y0 + y1)
+    bigint_result_t z1_temp_res = bigint_karatsuba(x_sum ,y_sum);
+    if (z1_temp_res.status != BIGINT_OK) {
+        bigint_destroy(x1); bigint_destroy(x0);
+        bigint_destroy(y1); bigint_destroy(y0);
+        bigint_destroy(z0); bigint_destroy(z2);
+        bigint_destroy(x_sum); bigint_destroy(y_sum);
+
+        return z1_temp_res;
+    }
+
+    bigint_t *z1_temp = z1_temp_res.value.number;
+
+    // z1 = ... - z0
+    bigint_result_t z1_sub1_res = bigint_sub(z1_temp, z0);
+    if (z1_sub1_res.status != BIGINT_OK) {
+        bigint_destroy(x1); bigint_destroy(x0);
+        bigint_destroy(y1); bigint_destroy(y0);
+        bigint_destroy(z0); bigint_destroy(z2);
+        bigint_destroy(x_sum); bigint_destroy(y_sum);
+        bigint_destroy(z1_temp);
+
+        return z1_sub1_res;
+    }
+
+    bigint_t *z1_sub1 = z1_sub1_res.value.number;
+
+    // z1 = ... - z2
+    bigint_result_t z1_sub2_res = bigint_sub(z1_sub1, z2);
+    if (z1_sub2_res.status != BIGINT_OK) {
+        bigint_destroy(x1); bigint_destroy(x0);
+        bigint_destroy(y1); bigint_destroy(y0);
+        bigint_destroy(z0); bigint_destroy(z2);
+        bigint_destroy(x_sum); bigint_destroy(y_sum);
+        bigint_destroy(z1_temp); bigint_destroy(z1_sub1);
+
+        return z1_sub2_res;
+    }
+
+    bigint_t *z1 = z1_sub2_res.value.number;
+
+    // product = z^2 * BASE^(2pivot) + z1 * BASE^pivot + z0
+    bigint_result_t z2_shift_res = bigint_shift_left(z2, 2*pivot);
+    if (z2_shift_res.status != BIGINT_OK) {
+        bigint_destroy(x1); bigint_destroy(x0);
+        bigint_destroy(y1); bigint_destroy(y0);
+        bigint_destroy(z0); bigint_destroy(z2);
+        bigint_destroy(x_sum); bigint_destroy(y_sum);
+        bigint_destroy(z1_temp); bigint_destroy(z1_sub1);
+        bigint_destroy(z1);
+
+        return z2_shift_res;
+    }
+
+    bigint_result_t z1_shift_res = bigint_shift_left(z1, pivot);
+    if (z1_shift_res.status != BIGINT_OK) {
+        bigint_destroy(x1); bigint_destroy(x0);
+        bigint_destroy(y1); bigint_destroy(y0);
+        bigint_destroy(z0); bigint_destroy(z2);
+        bigint_destroy(x_sum); bigint_destroy(y_sum);
+        bigint_destroy(z1_temp); bigint_destroy(z1_sub1);
+        bigint_destroy(z1);
+
+        return z1_shift_res;
+    }
+
+    bigint_t *z2_shifted = z2_shift_res.value.number;
+    bigint_t *z1_shifted = z1_shift_res.value.number;
+
+    bigint_result_t temp_res = bigint_add(z2_shifted, z1_shifted);
+    if (temp_res.status != BIGINT_OK) {
+        bigint_destroy(x1); bigint_destroy(x0);
+        bigint_destroy(y1); bigint_destroy(y0);
+        bigint_destroy(z0); bigint_destroy(z2);
+        bigint_destroy(x_sum); bigint_destroy(y_sum);
+        bigint_destroy(z1_temp); bigint_destroy(z1_sub1);
+        bigint_destroy(z1); bigint_destroy(z2_shifted);
+        bigint_destroy(z1_shifted);
+
+        return temp_res;
+    }
+
+    bigint_t *temp = temp_res.value.number;
+
+    // product = ... + z0
+    bigint_result_t product_res = bigint_add(temp, z0);
+    if (product_res.status != BIGINT_OK) {
+        bigint_destroy(x1); bigint_destroy(x0);
+        bigint_destroy(y1); bigint_destroy(y0);
+        bigint_destroy(z0); bigint_destroy(z2);
+        bigint_destroy(x_sum); bigint_destroy(y_sum);
+        bigint_destroy(z1_temp); bigint_destroy(z1_sub1);
+        bigint_destroy(z1); bigint_destroy(z2_shifted);
+        bigint_destroy(z1_shifted); bigint_destroy(temp);
+
+        return product_res;
+    }
+
+    bigint_t *product = product_res.value.number;
+
+    // Clean allocated numbers
+    bigint_destroy(x1); bigint_destroy(x0);
+    bigint_destroy(y1); bigint_destroy(y0);
+    bigint_destroy(z0); bigint_destroy(z1); bigint_destroy(z2);
+    bigint_destroy(x_sum); bigint_destroy(y_sum);
+    bigint_destroy(z1_temp); bigint_destroy(z1_sub1);
+    bigint_destroy(z2_shifted); bigint_destroy(z1_shifted);
+    bigint_destroy(temp);
+
+    result.value.number = product;
+    result.status = BIGINT_OK;
+    SET_MSG(result, "Product between big integers was successful");
+
+    return result;
 }
 
 /**
@@ -864,7 +1200,7 @@ bigint_result_t bigint_from_string(const char *string_num) {
     bigint_result_t result = {0};
 
     if (string_num == NULL || *string_num == 0) {
-        result.status = BIGNUM_ERR_INVALID;
+        result.status = BIGINT_ERR_INVALID;
         SET_MSG(result, "Invalid string");
 
         return result;
@@ -872,7 +1208,7 @@ bigint_result_t bigint_from_string(const char *string_num) {
 
     bigint_t *number = malloc(sizeof(bigint_t));
     if (number == NULL) {
-        result.status = BIGNUM_ERR_ALLOCATE;
+        result.status = BIGINT_ERR_ALLOCATE;
         SET_MSG(result, "Failed to allocate memory for big integer");
 
         return result;
@@ -881,7 +1217,7 @@ bigint_result_t bigint_from_string(const char *string_num) {
     vector_result_t vec_res = vector_new(4, sizeof(int));
     if (vec_res.status != VECTOR_OK) {
         free(number);        
-        result.status = BIGNUM_ERR_ALLOCATE;
+        result.status = BIGINT_ERR_ALLOCATE;
         COPY_MSG(result, vec_res.message);
 
         return result;
@@ -901,10 +1237,22 @@ bigint_result_t bigint_from_string(const char *string_num) {
     if (*string_num == '\0') {
         vector_destroy(number->digits);
         free(number);
-        result.status = BIGNUM_ERR_ALLOCATE;
+        result.status = BIGINT_ERR_ALLOCATE;
         SET_MSG(result, "Invalid integer");
 
         return result;
+    }
+
+    // Check whether characters are digits
+    for (const char *p = string_num; *p; ++p) {
+        if (!IS_DIGIT((unsigned char)*p)) {
+            vector_destroy(number->digits);
+            free(number);
+            result.status = BIGINT_ERR_INVALID;
+            SET_MSG(result, "Invalid integer");
+
+            return result;
+        }
     }
 
     // Skip leading zeros
@@ -921,29 +1269,31 @@ bigint_result_t bigint_from_string(const char *string_num) {
 
         int digit = 0;
         for (int j = 0; j < chunk_len; j++) {
-            digit *= 10 + (string_num[start + j] - '0');
+            // digit *= 10 + (string_num[start + j] - '0');
+            digit = digit * 10 + (string_num[start + j] - '0');
         }
 
         vector_result_t push_res = vector_push(number->digits, &digit);
         if (push_res.status != VECTOR_OK) {
             vector_destroy(number->digits);
             free(number);
-            result.status = BIGNUM_ERR_ALLOCATE;
-            COPY_MSG(result, vec_res.message);
+            result.status = BIGINT_ERR_ALLOCATE;
+            COPY_MSG(result, push_res.message);
 
             return result;
         }
     }
 
     bigint_result_t trim_res = bigint_trim_zeros(number);
-    if (trim_res.status != BIGNUM_OK) {
+    if (trim_res.status != BIGINT_OK) {
         vector_destroy(number->digits);
         free(number);
 
         return trim_res;
     }
 
-    result.status = BIGNUM_OK;
+    result.value.number = number;
+    result.status = BIGINT_OK;
     SET_MSG(result, "Big integer successfully created");
 
     return result;
@@ -961,7 +1311,7 @@ bigint_result_t bigint_clone(const bigint_t *number) {
     bigint_result_t result = {0};
 
     if (number == NULL) {
-        result.status = BIGNUM_ERR_INVALID;
+        result.status = BIGINT_ERR_INVALID;
         SET_MSG(result, "Invalid big integer");
 
         return result;
@@ -969,7 +1319,7 @@ bigint_result_t bigint_clone(const bigint_t *number) {
 
     bigint_t *cloned = malloc(sizeof(bigint_t));
     if (cloned == NULL) {
-        result.status = BIGNUM_ERR_ALLOCATE;
+        result.status = BIGINT_ERR_ALLOCATE;
         SET_MSG(result, "Failed to allocate memory for big integer");
 
         return result;
@@ -978,14 +1328,42 @@ bigint_result_t bigint_clone(const bigint_t *number) {
     vector_result_t vec_res = vector_new(vector_size(number->digits), sizeof(int));
     if (vec_res.status != VECTOR_OK) {
         free(cloned);
-        result.status = BIGNUM_ERR_ALLOCATE;
+        result.status = BIGINT_ERR_ALLOCATE;
         COPY_MSG(result, vec_res.message);
 
         return result;
     }
 
+    cloned->digits = vec_res.value.vector;
+    cloned->is_negative = number->is_negative;
+
+    // Copy digits
+    for (size_t idx = 0; idx < vector_size(number->digits); idx++) {
+        vector_result_t get_res = vector_get(number->digits, idx);
+        if (get_res.status != VECTOR_OK) {
+            vector_destroy(cloned->digits);
+            free(cloned);
+            result.status = BIGINT_ERR_INVALID;
+            COPY_MSG(result, get_res.message);
+
+            return result;
+        }
+
+        int *digit = (int*)get_res.value.element;
+        
+        vector_result_t push_res = vector_push(cloned->digits, digit);
+        if (push_res.status != VECTOR_OK) {
+            vector_destroy(cloned->digits);
+            free(cloned);
+            result.status = BIGINT_ERR_INVALID;
+            COPY_MSG(result, push_res.message);
+
+            return result;
+        }
+    }
+
     result.value.number = cloned;
-    result.status = BIGNUM_OK;
+    result.status = BIGINT_OK;
     SET_MSG(result, "Big integer successfully cloned");
 
     return result;
@@ -1003,7 +1381,7 @@ bigint_result_t bigint_destroy(bigint_t *number) {
     bigint_result_t result = {0};
 
     if (number == NULL) {
-        result.status = BIGNUM_ERR_INVALID;
+        result.status = BIGINT_ERR_INVALID;
         SET_MSG(result, "Invalid big integer");
 
         return result;
@@ -1012,7 +1390,7 @@ bigint_result_t bigint_destroy(bigint_t *number) {
     vector_destroy(number->digits);
     free(number);
 
-    result.status = BIGNUM_OK;
+    result.status = BIGINT_OK;
     SET_MSG(result, "Big integer successfully deleted");
 
     return result;

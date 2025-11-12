@@ -14,11 +14,11 @@
 typedef enum { false = 0x0, true } bool;
 
 typedef enum {
-    BIGNUM_OK = 0x0,
-    BIGNUM_ERR_ALLOCATE,
-    BIGNUM_ERR_DIV_BY_ZERO,
-    BIGNUM_ERR_INVALID
-} bignum_status_t;
+    BIGINT_OK = 0x0,
+    BIGINT_ERR_ALLOCATE,
+    BIGINT_ERR_DIV_BY_ZERO,
+    BIGINT_ERR_INVALID
+} bigint_status_t;
 
 typedef struct {
     vector_t *digits;
@@ -26,11 +26,11 @@ typedef struct {
 } bigint_t;
 
 typedef struct {
-    bignum_status_t status;
+    bigint_status_t status;
     uint8_t message[RESULT_MSG_SIZE];
     union {
         bigint_t *number;
-        uint8_t compare_status;
+        int8_t compare_status;
         char *string_num;
     } value;
 } bigint_result_t;
@@ -45,6 +45,7 @@ bigint_result_t bigint_clone(const bigint_t *number);
 bigint_result_t bigint_compare(const bigint_t *x, const bigint_t *y);
 bigint_result_t bigint_add(const bigint_t *x, const bigint_t *y);
 bigint_result_t bigint_sub(const bigint_t *x, const bigint_t *y);
+bigint_result_t bigint_prod(const bigint_t *x, const bigint_t *y);
 bigint_result_t bigint_destroy(bigint_t *number);
 
 #ifdef __cplusplus
