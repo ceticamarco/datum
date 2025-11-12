@@ -1,5 +1,5 @@
-#ifndef BIGNUM_H
-#define BIGNUM_H
+#ifndef BIGINT_H
+#define BIGINT_H
 
 #define RESULT_MSG_SIZE 64
 
@@ -9,9 +9,8 @@
 #define BIGINT_BASE_DIGITS 9
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "vector.h"
-
-typedef enum { false = 0x0, true } bool;
 
 typedef enum {
     BIGINT_OK = 0x0,
@@ -41,12 +40,14 @@ extern "C" {
 
 bigint_result_t bigint_from_int(long long value);
 bigint_result_t bigint_from_string(const char *string_num);
+bigint_result_t bigint_to_string(const bigint_t *number);
 bigint_result_t bigint_clone(const bigint_t *number);
 bigint_result_t bigint_compare(const bigint_t *x, const bigint_t *y);
 bigint_result_t bigint_add(const bigint_t *x, const bigint_t *y);
 bigint_result_t bigint_sub(const bigint_t *x, const bigint_t *y);
 bigint_result_t bigint_prod(const bigint_t *x, const bigint_t *y);
 bigint_result_t bigint_destroy(bigint_t *number);
+bigint_result_t bigint_print(const bigint_t *number);
 
 #ifdef __cplusplus
 }

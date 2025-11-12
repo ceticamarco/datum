@@ -11,7 +11,7 @@ TARGET = usage
 TEST_V_TARGET = test_vector
 TEST_M_TARGET = test_map
 
-LIB_OBJS = $(OBJ_DIR)/vector.o $(OBJ_DIR)/map.o
+LIB_OBJS = $(OBJ_DIR)/vector.o $(OBJ_DIR)/map.o $(OBJ_DIR)/bigint.o
 PROG_OBJS = $(OBJ_DIR)/usage.o
 
 .PHONY: all clean

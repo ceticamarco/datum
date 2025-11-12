@@ -20,9 +20,12 @@
 
 #include "src/vector.h"
 #include "src/map.h"
+#include "src/bigint.h"
 
 static int vector_usage();
 static int map_usage();
+static int bigint_usage();
+
 static vector_order_t cmp_int_asc(const void *x, const void *y);
 
 int main(void) {
@@ -34,6 +37,11 @@ int main(void) {
     SEP(50);
 
     st = map_usage();
+    if (st) { return st; }
+
+    SEP(50);
+
+    st = bigint_usage();
     if (st) { return st; }
 
     return 0;
@@ -282,6 +290,8 @@ int map_usage() {
         printf("Map cleared (size should be 0): %zu\n", map_size(map));
     }
 
+    printf("\n");
+
     // Delete the map
     map_result_t del_res = map_destroy(map);
     if (del_res.status != MAP_OK) {
@@ -289,6 +299,76 @@ int map_usage() {
 
         return 1;
     }
+
+    return 0;
+}
+
+int bigint_usage() {
+    // Create a big integer
+    bigint_result_t x_res = bigint_from_string("123456789");
+    if (x_res.status != BIGINT_OK) {
+        printf("Error while creating big number: %s\n", x_res.message);
+
+        return 1;
+    }
+
+    bigint_result_t y_res = bigint_from_string("987654321");
+    if (x_res.status != BIGINT_OK) {
+        printf("Error while creating big number: %s\n", x_res.message);
+
+        return 1;
+    }
+
+    bigint_t *x = x_res.value.number;
+    bigint_t *y = y_res.value.number;
+
+    // Sum two big integers
+    bigint_result_t sum_res = bigint_add(x, y);
+    if (sum_res.status != BIGINT_OK) {
+        printf("Error while summing two big numbers: %s\n", sum_res.message);
+
+        return 1;
+    }
+
+    bigint_t *sum = sum_res.value.number;
+
+    // Print result
+    printf("123456789 + 987654321 (should be 1,111,111,110) = ");
+    bigint_print(sum);
+    printf("\n");
+
+    // Subtract two big integers
+    bigint_result_t diff_res = bigint_sub(x, y);
+    if (diff_res.status != BIGINT_OK) {
+        printf("Error while subtracting two big numbers: %s\n", diff_res.message);
+
+        return 1;
+    }
+
+    bigint_t *diff = diff_res.value.number;
+
+    // Print result
+    printf("123456789 - 987654321 (should be -864,197,532) = ");
+    bigint_print(diff);
+    printf("\n");
+
+    // Multiply two big integers
+    bigint_result_t prod_res = bigint_prod(x, y);
+    if (prod_res.status != BIGINT_OK) {
+        printf("Error while multiplying two big numbers: %s\n", prod_res.message);
+
+        return 1;
+    }
+
+    bigint_t *prod = prod_res.value.number;
+
+    // Print result
+    printf("123456789 * 987654321 (should be 121,932,631,112,635,269) = ");
+    bigint_print(prod);
+    printf("\n");
+
+    bigint_destroy(x); bigint_destroy(y);
+    bigint_destroy(sum); bigint_destroy(diff); bigint_destroy(prod);
 
     return 0;
 }

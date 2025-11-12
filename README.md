@@ -10,11 +10,12 @@ the standard library. It currently features:
 
 - [**Vector**](/docs/vector.md): a growable, contiguous array of homogenous generic data types;  
 - [**Map**](/docs/map.md): an associative array that handles generic heterogenous data types;  
+- [**BigInt**](/docs/bigint.md): a data type for arbitrary large integers.  
 
 ## Usage
 At its simplest, you can use this library as follows:
 
-### `Vector`'s usage
+### `Vector` usage
 
 ```c
 #include <stdio.h>
@@ -51,7 +52,7 @@ int main(void) {
 }
 ```
 
-### `Map`'s usage
+### `Map` usage
 
 ```c
 #include <stdio.h>
@@ -94,6 +95,40 @@ int main(void) {
     return 0;
 }
 ```
+
+### `BigInt` usage
+```c
+#include <stdio.h>
+#include "src/bigint.h"
+
+/*
+ * Compile with: gcc main.c src/bigint.c
+ * Output: 20000! = 1819206320230345134827641...
+ * Time: real 0m5.482s user 0m5.453s sys 0m0.017
+ */
+int main(void) {
+    const int n = 20000;
+    bigint_t *fact = bigint_from_int(1).value.number;
+
+    for (int idx = 2; idx<=n; idx++) {
+        bigint_t *big_idx = bigint_from_int(idx).value.number;
+        bigint_t *partial_fact = bigint_prod(fact, big_idx).value.number;
+
+        bigint_destroy(fact);
+        bigint_destroy(big_idx);
+        fact = partial_fact;
+    }
+
+    printf("%ld! = ", n);
+    bigint_print(fact);
+    printf("\n");
+
+    bigint_destroy(fact);
+    return 0;
+}
+```
+
+
 
 For a more exhaustive example, refer to the `usage.c` file. There, you will find a program with proper error management
 and a sample usage for every available method. To run it, first issue the following command:
