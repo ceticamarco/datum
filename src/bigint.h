@@ -53,6 +53,7 @@ bigint_result_t bigint_add(const bigint_t *x, const bigint_t *y);
 bigint_result_t bigint_sub(const bigint_t *x, const bigint_t *y);
 bigint_result_t bigint_prod(const bigint_t *x, const bigint_t *y);
 bigint_result_t bigint_divmod(const bigint_t *x, const bigint_t *y);
+bigint_result_t bigint_mod(const bigint_t *x, const bigint_t *y);
 bigint_result_t bigint_destroy(bigint_t *number);
 bigint_result_t bigint_print(const bigint_t *number);
 

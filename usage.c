@@ -304,7 +304,7 @@ int map_usage() {
 }
 
 int bigint_usage() {
-    // Create a big integer
+    // Create two big integers
     bigint_result_t x_res = bigint_from_string("123456789");
     if (x_res.status != BIGINT_OK) {
         printf("Error while creating big number: %s\n", x_res.message);
@@ -366,6 +366,30 @@ int bigint_usage() {
     printf("123456789 * 987654321 (should be 121,932,631,112,635,269) = ");
     bigint_print(prod);
     printf("\n");
+
+    // Divide two big integers
+    bigint_t *a = bigint_from_string("4573495456849").value.number;
+    bigint_t *b = bigint_from_string("4356987654321").value.number;
+    bigint_result_t div_res = bigint_divmod(a, b);
+    if (div_res.status != BIGINT_OK) {
+        printf("Error while dividing two big numbers: %s\n", div_res.message);
+
+        return 1;
+    }
+
+    bigint_t *q = div_res.value.division.quotient;
+    bigint_t *r = div_res.value.division.remainder;
+
+    // Print result
+    printf("a / b = ");
+    bigint_print(q);
+    printf("\n");
+    bigint_print(r);
+    printf("\n");
+
+    bigint_destroy(a); bigint_destroy(b);
+    bigint_destroy(q); bigint_destroy(r);
+
 
     bigint_destroy(x); bigint_destroy(y);
     bigint_destroy(sum); bigint_destroy(diff); bigint_destroy(prod);

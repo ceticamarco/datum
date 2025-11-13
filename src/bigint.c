@@ -29,6 +29,7 @@ static bigint_result_t bigint_karatsuba_base(const bigint_t *x, const bigint_t *
 static bigint_result_t bigint_karatsuba(const bigint_t *x, const bigint_t *y);
 static bigint_result_t bigint_shift_right(const bigint_t *num, size_t n);
 static bigint_result_t bigint_reciprocal(const bigint_t *num, size_t precision);
+static bigint_result_t bigint_div(const bigint_t *x, const bigint_t *y);
 
 /**
  * bigint_from_int
@@ -179,7 +180,6 @@ bigint_result_t bigint_from_string(const char *string_num) {
 
         int digit = 0;
         for (int j = 0; j < chunk_len; j++) {
-            // digit *= 10 + (string_num[start + j] - '0');
             digit = digit * 10 + (string_num[start + j] - '0');
         }
 
@@ -877,6 +877,271 @@ bigint_result_t bigint_prod(const bigint_t *x, const bigint_t *y) {
 }
 
 /**
+ * bigint_div
+ *  @x: a valid non-null big integer
+ *  @y: a valid non-null big integer
+ * 
+ *  Internal method to compute divisions using Newton-Raphson
+ *  algorithm for reciprocal
+ * 
+ *  Returns a bigint_result_t data type
+ */
+bigint_result_t bigint_div(const bigint_t *x, const bigint_t *y) {
+    bigint_result_t result = {0};
+    bigint_result_t tmp_res = {0};
+
+    // Intermediate results
+    bigint_t *base_result = NULL;
+    bigint_t *recip = NULL;
+    bigint_t *q_temp = NULL;
+    bigint_t *quotient = NULL;
+    bigint_t *check = NULL;
+    bigint_t *remainder = NULL;
+    bigint_t *one = NULL;
+    bigint_t *new_quotient = NULL;
+
+    if (x == NULL || y == NULL) {
+        result.status = BIGINT_ERR_INVALID;
+        SET_MSG(result, "Invalid big numbers");
+
+        return result;
+    }
+
+    // Check for division by zero
+    const size_t y_size = vector_size(y->digits);
+    if (y_size == 0) {
+        result.status = BIGINT_ERR_DIV_BY_ZERO;
+        SET_MSG(result, "Division by zero");
+
+        return result;
+    }
+
+    if (y_size == 1) {
+        vector_result_t y_val_res = vector_get(y->digits, 0);
+        if (y_val_res.status != VECTOR_OK) {
+            result.status = BIGINT_ERR_INVALID;
+            COPY_MSG(result, y_val_res.message);
+
+            return result;
+        }
+
+        int *y_val = (int*)y_val_res.value.element;
+        if (*y_val == 0) {
+            result.status = BIGINT_ERR_DIV_BY_ZERO;
+            SET_MSG(result, "Division by zero");
+
+            return result;
+        }
+    }
+
+    // If |x| < |y| then result is zero
+    tmp_res = bigint_compare_abs(x, y);
+    if (tmp_res.status != BIGINT_OK) { result = tmp_res; return result; }
+
+    if (tmp_res.value.compare_status < 0) {
+        tmp_res = bigint_from_int(0);
+        if (tmp_res.status != BIGINT_OK) { result = tmp_res; return result; }
+
+        result.value.number = tmp_res.value.number;
+        result.status = BIGINT_OK;
+        SET_MSG(result, "Division between big integers was successful");
+
+        return result;
+    }
+
+    // Use "grade-school division" for small divisors
+    if (y_size <= 100) {
+        vector_result_t y_digit_res = vector_get(y->digits, 0);
+        if (y_digit_res.status != VECTOR_OK) { 
+            result.status = BIGINT_ERR_INVALID;
+            COPY_MSG(result, y_digit_res.message);
+
+            return result;
+        }
+
+        int *y_digit = (int*)y_digit_res.value.element;
+
+        // special case: division by 1
+        if (*y_digit == 1) {
+            tmp_res = bigint_clone(x);
+            if (tmp_res.status != BIGINT_OK) { result = tmp_res; return result; }
+
+            base_result = tmp_res.value.number;
+            base_result->is_negative = (x->is_negative != y->is_negative);
+
+            result.value.number = base_result;
+            result.status = BIGINT_OK;
+            SET_MSG(result, "Division between big integers was successful");
+
+            return result;
+        }
+
+        // Single digit division
+        base_result = malloc(sizeof(bigint_t));
+        if (base_result == NULL) {
+            result.status = BIGINT_ERR_ALLOCATE;
+            SET_MSG(result, "Failed to allocate memory for result");
+
+            return result;
+        }
+
+        vector_result_t vec_res = vector_new(vector_size(x->digits), sizeof(int));
+        if (vec_res.status != VECTOR_OK) {
+            result.status = BIGINT_ERR_ALLOCATE;
+            COPY_MSG(result, vec_res.message);
+            free(base_result);
+
+            return result;
+        }
+
+        base_result->digits = vec_res.value.vector;
+        base_result->is_negative = false;
+
+        long long remainder_val = 0;
+        long long divisor = *y_digit;
+
+        for (int idx = vector_size(x->digits) - 1; idx >= 0; idx--) {
+            vector_result_t x_digit_res = vector_get(x->digits, idx);
+            if (x_digit_res.status != VECTOR_OK) {
+                result.status = BIGINT_ERR_INVALID;
+                COPY_MSG(result, x_digit_res.message);
+                bigint_destroy(base_result);
+
+                return result;
+            }
+
+            int *x_digit = (int*)x_digit_res.value.element;
+
+            remainder_val = remainder_val * BIGINT_BASE + *x_digit;
+            int quotient_digit = remainder_val / divisor;
+            remainder_val %= divisor;
+
+            vector_result_t push_res = vector_push(base_result->digits, &quotient_digit);
+            if (push_res.status != VECTOR_OK) {
+                result.status = BIGINT_ERR_INVALID;
+                COPY_MSG(result, push_res.message);
+                bigint_destroy(base_result);
+
+                return result;
+            }
+        }
+
+        // Reverse the digits
+        const size_t rev_size = vector_size(base_result->digits);
+        for (size_t idx = 0; idx < rev_size / 2; idx++) {
+            vector_result_t left_res = vector_get(base_result->digits, idx);
+            vector_result_t right_res = vector_get(base_result->digits, rev_size - 1 - idx);
+
+            if (left_res.status != VECTOR_OK || right_res.status != VECTOR_OK) {
+                result.status = BIGINT_ERR_INVALID;
+                SET_MSG(result, "Failed to access vector elements");
+                bigint_destroy(base_result);
+
+                return result;
+            }
+
+            int *left = (int*)left_res.value.element;
+            int *right = (int*)right_res.value.element;
+            int temp = *left;
+
+            // We ignore return status since we already checked that indexes are valid
+            vector_set(base_result->digits, idx, right);
+            vector_set(base_result->digits, rev_size - 1 - idx, &temp);
+        }
+
+        base_result->is_negative = (x->is_negative != y->is_negative);
+
+        tmp_res = bigint_trim_zeros(base_result);
+        if (tmp_res.status != BIGINT_OK) {
+            result = tmp_res;
+            bigint_destroy(base_result);
+
+            return result;
+        }
+
+        result.value.number = base_result;
+        result.status = BIGINT_OK;
+        SET_MSG(result, "Division between big integers was successful");
+
+        return result;
+    }
+
+    // Otherwise, use Newton-Raphson algorithm
+    const size_t precision = vector_size(x->digits) + 1;
+
+    // Compute reciprocal of y: r = floor(BASE^(2 * precision) / y)
+    tmp_res = bigint_reciprocal(y, precision);
+    if (tmp_res.status != BIGINT_OK) { result = tmp_res; goto cleanup; }
+    recip = tmp_res.value.number;
+
+    // Multiply x by reciprocal: x = x * r
+    tmp_res = bigint_prod(x, recip);
+    if (tmp_res.status != BIGINT_OK) { result = tmp_res; goto cleanup; }
+    q_temp = tmp_res.value.number;
+
+    // Scale down by BASE^(2 * precision) to get quotient
+    tmp_res = bigint_shift_right(q_temp, 2 * precision);
+    if (tmp_res.status != BIGINT_OK) { result = tmp_res; goto cleanup; }
+    quotient = tmp_res.value.number;
+
+    // Adjust if necessary since quotient might be off by 1
+    tmp_res = bigint_prod(quotient, y);
+    if (tmp_res.status != BIGINT_OK) { result = tmp_res; goto cleanup; }
+    check = tmp_res.value.number;
+
+    tmp_res = bigint_sub(x, check);
+    if (tmp_res.status != BIGINT_OK) { result = tmp_res; goto cleanup; }
+    remainder = tmp_res.value.number;
+
+    // If remainder >= y then increment quotient
+    tmp_res = bigint_compare_abs(remainder, y);
+    if (tmp_res.status != BIGINT_OK) { result = tmp_res; goto cleanup; }
+    
+    if (tmp_res.value.compare_status >= 0) {
+        tmp_res = bigint_from_int(1);
+        if (tmp_res.status != BIGINT_OK) { result = tmp_res; goto cleanup; }
+        one = tmp_res.value.number;
+
+        tmp_res = bigint_add(quotient, one);
+        if (tmp_res.status != BIGINT_OK) { result = tmp_res; goto cleanup; }
+        new_quotient = tmp_res.value.number;
+
+        bigint_destroy(quotient);
+        quotient = new_quotient;
+        new_quotient = NULL;
+    }
+
+    quotient->is_negative = (x->is_negative != y->is_negative);
+
+    tmp_res = bigint_trim_zeros(quotient);
+    if (tmp_res.status != BIGINT_OK) { result = tmp_res; goto cleanup; }
+
+    // Destroy intermediate allocations except for the quotient
+    bigint_destroy(recip);
+    bigint_destroy(q_temp);
+    bigint_destroy(check);
+    bigint_destroy(remainder);
+    bigint_destroy(one);
+
+    result.value.number = quotient;
+    result.status = BIGINT_OK;
+    SET_MSG(result, "Division between big integers was successful");
+
+    return result;
+
+cleanup: // Destroy intermediate allocations
+    if (recip) { bigint_destroy(recip); }
+    if (q_temp) { bigint_destroy(q_temp); }
+    if (quotient) { bigint_destroy(quotient); }
+    if (check) { bigint_destroy(check); }
+    if (remainder) { bigint_destroy(remainder); }
+    if (one) { bigint_destroy(one); }
+    if (new_quotient) { bigint_destroy(new_quotient); }
+
+    return result;
+}
+
+/**
  * bigint_divmod
  *  @x: a valid non-null big integer
  *  @y: a valid non-null big integer
@@ -987,11 +1252,46 @@ cleanup:
 }
 
 /**
+ * bigint_mod
+ *  @x: a valid non-null big integer
+ *  @y: a valid non-null big integer
+ * 
+ *  Computes @x mod @y
+ * 
+ *  Returns a bigint_result_t data type
+ */
+bigint_result_t bigint_mod(const bigint_t *x, const bigint_t *y) {
+    bigint_result_t result = {0};
+
+    if (x == NULL || y == NULL) {
+        result.status = BIGINT_ERR_INVALID;
+        SET_MSG(result, "Invalid big numbers");
+
+        return result;
+    }
+
+    bigint_result_t div_res = bigint_divmod(x, y);
+    if (div_res.status != BIGINT_OK) { return div_res; }
+
+    bigint_t* const quotient = div_res.value.division.quotient;
+    bigint_t* const remainder = div_res.value.division.remainder;
+
+    // Discard quotient
+    bigint_destroy(quotient);
+
+    result.value.number = remainder;
+    result.status = BIGINT_OK;
+    SET_MSG(result, "Division between big integers was successful");
+
+    return result;
+}
+
+/**
  * bigint_shift_left
  *  @num: a non-null big integer
  *  @n: number of digits to shift
  * 
- *  Shift left by @n digits (i.e., multiply by BASE^n)
+ *  Shifts left by @n digits (i.e., multiply by BASE^n)
  * 
  *  Returns a bigint_result_t data type
  */
@@ -1734,7 +2034,7 @@ bigint_result_t bigint_print(const bigint_t *number) {
         return num_str_res;
     }
 
-    char *number_str = num_str_res.value.string_num;
+    char* const number_str = num_str_res.value.string_num;
     
     printf("%s", number_str);
     free(number_str);
