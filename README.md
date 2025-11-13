@@ -119,7 +119,7 @@ int main(void) {
         fact = partial_fact;
     }
 
-    printf("%ld! = ", n);
+    printf("%d! = ", n);
     bigint_print(fact);
     printf("\n");
 

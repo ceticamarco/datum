@@ -25,10 +25,16 @@ typedef struct {
 } bigint_t;
 
 typedef struct {
+    bigint_t *quotient;
+    bigint_t *remainder;
+} div_result_t;
+
+typedef struct {
     bigint_status_t status;
     uint8_t message[RESULT_MSG_SIZE];
     union {
         bigint_t *number;
+        div_result_t division;
         int8_t compare_status;
         char *string_num;
     } value;
@@ -46,6 +52,7 @@ bigint_result_t bigint_compare(const bigint_t *x, const bigint_t *y);
 bigint_result_t bigint_add(const bigint_t *x, const bigint_t *y);
 bigint_result_t bigint_sub(const bigint_t *x, const bigint_t *y);
 bigint_result_t bigint_prod(const bigint_t *x, const bigint_t *y);
+bigint_result_t bigint_divmod(const bigint_t *x, const bigint_t *y);
 bigint_result_t bigint_destroy(bigint_t *number);
 bigint_result_t bigint_print(const bigint_t *number);
 
