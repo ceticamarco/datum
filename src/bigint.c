@@ -61,33 +61,34 @@ bigint_result_t bigint_from_int(long long value) {
     number->digits = vec_res.value.vector;
     number->is_negative = (value < 0);
 
-    if (value < 0) {
-        value = -value;
-    } else if (value == 0) {
+    // Discard the sign since we don't need it anymore
+    unsigned long long abs_val = value < 0 ? -(unsigned long long)value : (unsigned long long)value;
+
+    if(abs_val == 0) {
         int zero = 0;
         vector_result_t push_res = vector_push(number->digits, &zero);
         if (push_res.status != VECTOR_OK) {
             vector_destroy(number->digits);
             free(number);
             result.status = BIGINT_ERR_INVALID;
-            COPY_MSG(result, vec_res.message);
+            COPY_MSG(result, push_res.message);
 
             return result;
         }
     } else {
-        while (value > 0) {
-            int digit = value % BIGINT_BASE;
+        while (abs_val != 0) {
+            int digit = abs_val % BIGINT_BASE;
             vector_result_t push_res = vector_push(number->digits, &digit);
             if (push_res.status != VECTOR_OK) {
                 vector_destroy(number->digits);
                 free(number);
                 result.status = BIGINT_ERR_INVALID;
-                COPY_MSG(result, vec_res.message);
+                COPY_MSG(result, push_res.message);
 
                 return result;
             }
 
-            value /= BIGINT_BASE;
+            abs_val /= BIGINT_BASE;
         }
     }
 
