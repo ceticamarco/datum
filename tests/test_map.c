@@ -15,7 +15,7 @@
 #include "../src/map.h"
 
 // Create a new map
-void test_map_new() {
+void test_map_new(void) {
     map_result_t res = map_new();
 
     assert(res.status == MAP_OK);
@@ -27,7 +27,7 @@ void test_map_new() {
 }
 
 // Add elements to map
-void test_map_add() {
+void test_map_add(void) {
     map_result_t res = map_new();
     
     assert(res.status == MAP_OK);
@@ -47,7 +47,7 @@ void test_map_add() {
 }
 
 // Add multiple elements to the map
-void test_map_add_multiple() {
+void test_map_add_multiple(void) {
     map_result_t res = map_new();
     
     assert(res.status == MAP_OK);
@@ -68,7 +68,7 @@ void test_map_add_multiple() {
 }
 
 // Get map element
-void test_map_get() {
+void test_map_get(void) {
     map_result_t res = map_new();
     
     assert(res.status == MAP_OK);
@@ -85,7 +85,7 @@ void test_map_get() {
 }
 
 // Get non-existing key from map
-void test_map_get_invalid() {
+void test_map_get_invalid(void) {
     map_result_t res = map_new();
     
     assert(res.status == MAP_OK);
@@ -98,7 +98,7 @@ void test_map_get_invalid() {
 }
 
 // Map with heterogeneous types
-void test_map_mixed() {
+void test_map_mixed(void) {
     map_result_t res = map_new();
     
     assert(res.status == MAP_OK);
@@ -126,7 +126,7 @@ void test_map_mixed() {
 }
 
 // Update existing map key
-void test_map_update() {
+void test_map_update(void) {
     map_result_t res = map_new();
     
     assert(res.status == MAP_OK);
@@ -149,7 +149,7 @@ void test_map_update() {
 }
 
 // Remove an element from map
-void test_map_remove() {
+void test_map_remove(void) {
     map_result_t res = map_new();
 
     assert(res.status == MAP_OK);
@@ -177,7 +177,7 @@ void test_map_remove() {
 }
 
 // Remove non-existing key from map
-void test_map_remove_invalid() {
+void test_map_remove_invalid(void) {
     map_result_t res = map_new();
     
     assert(res.status == MAP_OK);
@@ -190,7 +190,7 @@ void test_map_remove_invalid() {
 }
 
 // Clear the map
-void test_map_clear() {
+void test_map_clear(void) {
     map_result_t res = map_new();
     
     assert(res.status == MAP_OK);
@@ -212,7 +212,7 @@ void test_map_clear() {
 }
 
 // Clear empty map
-void test_map_clear_empty() {
+void test_map_clear_empty(void) {
     map_result_t res = map_new();
     
     assert(res.status == MAP_OK);
@@ -226,7 +226,7 @@ void test_map_clear_empty() {
 }
 
 // Multiple operations in sequence (add, update, delete and clear)
-void test_map_sequence() {
+void test_map_sequence(void) {
     map_result_t res = map_new();
     
     assert(res.status == MAP_OK);
@@ -266,7 +266,7 @@ typedef struct {
     short age;
 } Person;
 
-void test_map_struct() {
+void test_map_struct(void) {
     map_result_t res = map_new();
     
     assert(res.status == MAP_OK);
@@ -298,7 +298,7 @@ void test_map_struct() {
 }
 
 // Test map capacity tracking
-void test_map_cap() {
+void test_map_cap(void) {
     map_result_t res = map_new();
     
     assert(res.status == MAP_OK);

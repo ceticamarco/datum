@@ -22,9 +22,9 @@
 #include "src/map.h"
 #include "src/bigint.h"
 
-static int vector_usage();
-static int map_usage();
-static int bigint_usage();
+static int vector_usage(void);
+static int map_usage(void);
+static int bigint_usage(void);
 
 static vector_order_t cmp_int_asc(const void *x, const void *y);
 static vector_order_t cmp_int_desc(const void *x, const void *y);
@@ -62,7 +62,7 @@ vector_order_t cmp_int_desc(const void *x, const void *y) {
     return cmp_int_asc(y, x);
 }
 
-int vector_usage() {
+int vector_usage(void) {
     // Create a vector of 3 integers
     vector_result_t res = vector_new(3, sizeof(int));
     if (res.status != VECTOR_OK) {
@@ -203,7 +203,7 @@ int vector_usage() {
     return 0;
 }
 
-int map_usage() {
+int map_usage(void) {
     // Create a new map
     map_result_t res = map_new();
     if (res.status != MAP_OK) {
@@ -304,7 +304,7 @@ int map_usage() {
     return 0;
 }
 
-int bigint_usage() {
+int bigint_usage(void) {
     // Create two big integers
     bigint_result_t x_res = bigint_from_string("123456789");
     if (x_res.status != BIGINT_OK) {

@@ -53,7 +53,7 @@ typedef struct {
 extern "C" {
 #endif
 
-map_result_t map_new();
+map_result_t map_new(void);
 map_result_t map_add(map_t *map, const char *key, void *value);
 map_result_t map_get(const map_t *map, const char *key);
 map_result_t map_remove(map_t *map, const char *key);

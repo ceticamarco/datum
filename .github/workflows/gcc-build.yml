@@ -1,17 +1,16 @@
-name: datum
-on:
-  push:
-    branch: [master]
-  workflow_dispatch:
+name: gcc-build
+on: [push,pull_request,workflow_dispatch]
 
 jobs:
-  build:
+  gcc-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Build Datum
         run: |
           make clean all
+
       - name: Run unit tests
         run: |
-          ./test_vector && ./test_map  
+          ./test_vector && ./test_map && ./test_bigint

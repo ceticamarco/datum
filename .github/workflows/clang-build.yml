@@ -1,0 +1,19 @@
+name: clang-build
+on: [push,pull_request,workflow_dispatch]
+
+jobs:
+  clang-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Clang
+        run: sudo apt update && sudo apt install -y clang
+
+      - name: Build Datum
+        run: |
+          make clean all
+
+      - name: Run unit tests
+        run: |
+          ./test_vector && ./test_map && ./test_bigint

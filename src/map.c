@@ -37,7 +37,7 @@ uint64_t hash_key(const char *key) {
  *
  * Returns a map_result_t data type containing a new hash map
  */
-map_result_t map_new() {
+map_result_t map_new(void) {
     map_result_t result = {0};
 
     map_t *map = malloc(sizeof(map_t));

@@ -2,7 +2,8 @@
     <h1>Datum</h1>
     <h6><i>Collection of dynamic and generic data structures.</i></h6>
 
-[![](https://github.com/ceticamarco/datum/actions/workflows/datum.yml/badge.svg)](https://github.com/ceticamarco/datum/actions/workflows/datum.yml)
+[![](https://github.com/ceticamarco/datum/actions/workflows/gcc-build.yml/badge.svg)](https://github.com/ceticamarco/datum/actions/workflows/gcc-build.yml)
+[![](https://github.com/ceticamarco/datum/actions/workflows/clang-build.yml/badge.svg)](https://github.com/ceticamarco/datum/actions/workflows/clang-build.yml)
 </div>
 
 Datum is a collection of dynamic and generic data structures implemented from scratch in C with no external dependencies beyond
@@ -98,19 +99,18 @@ int main(void) {
 
 ### `BigInt` usage
 ```c
-#include <stdio.h>
 #include "src/bigint.h"
 
 /*
- * Compile with: gcc main.c src/bigint.c
+ * Compile with: gcc -O3 main.c src/bigint.c src/vector.c
  * Output: 20000! = 1819206320230345134827641...
- * Time: real 0m5.482s user 0m5.453s sys 0m0.017
+ * Time: 4.01s user 0.00s system 99% cpu 4.021 total
  */
 int main(void) {
     const int n = 20000;
     bigint_t *fact = bigint_from_int(1).value.number;
 
-    for (int idx = 2; idx<=n; idx++) {
+    for (int idx = 2; idx <= n; idx++) {
         bigint_t *big_idx = bigint_from_int(idx).value.number;
         bigint_t *partial_fact = bigint_prod(fact, big_idx).value.number;
 
@@ -119,16 +119,12 @@ int main(void) {
         fact = partial_fact;
     }
 
-    printf("%d! = ", n);
-    bigint_print(fact);
-    printf("\n");
+    bigint_printf("%d! = %B\n", n, fact);
 
     bigint_destroy(fact);
     return 0;
 }
 ```
-
-
 
 For a more exhaustive example, refer to the `usage.c` file. There, you will find a program with proper error management
 and a sample usage for every available method. To run it, first issue the following command:
@@ -144,12 +140,13 @@ For additional details about this library (internal design, memory
 management, data ownership, etc.) go to the [docs folder](/docs).
 
 ## Unit tests
-Datum provides some unit tests for both the `Vector` and the `Map` data types. To run them, you can issue the following commands:
+Datum provides some unit tests for `Vector`, `Map` and `BigInt`. To run them, you can issue the following commands:
 
 ```sh
 $ make clean all
 $ ./test_vector
 $ ./test_map
+$ ./test_bigint
 ```
 
 ## License
