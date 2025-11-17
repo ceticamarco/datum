@@ -27,6 +27,7 @@ static int map_usage();
 static int bigint_usage();
 
 static vector_order_t cmp_int_asc(const void *x, const void *y);
+static vector_order_t cmp_int_desc(const void *x, const void *y);
 
 int main(void) {
     int st;
@@ -333,9 +334,7 @@ int bigint_usage() {
     bigint_t *sum = sum_res.value.number;
 
     // Print result
-    printf("123456789 + 987654321 (should be 1,111,111,110) = ");
-    bigint_print(sum);
-    printf("\n");
+    bigint_printf("123456789 + 987654321 (should be 1,111,111,110) = %B\n", sum);
 
     // Subtract two big integers
     bigint_result_t diff_res = bigint_sub(x, y);
@@ -348,9 +347,7 @@ int bigint_usage() {
     bigint_t *diff = diff_res.value.number;
 
     // Print result
-    printf("123456789 - 987654321 (should be -864,197,532) = ");
-    bigint_print(diff);
-    printf("\n");
+    bigint_printf("123456789 - 987654321 (should be -864,197,532) = %B\n", diff);
 
     // Multiply two big integers
     bigint_result_t prod_res = bigint_prod(x, y);
@@ -363,13 +360,12 @@ int bigint_usage() {
     bigint_t *prod = prod_res.value.number;
 
     // Print result
-    printf("123456789 * 987654321 (should be 121,932,631,112,635,269) = ");
-    bigint_print(prod);
-    printf("\n");
+    bigint_printf("123456789 * 987654321 (should be 121,932,631,112,635,269) = %B\n", prod);
+
+    bigint_t *a = bigint_from_string("457349545684946456456456567567").value.number;
+    bigint_t *b = bigint_from_string("43569678678678678678678432").value.number;
 
     // Divide two big integers
-    bigint_t *a = bigint_from_string("4573495456849").value.number;
-    bigint_t *b = bigint_from_string("4356987654321").value.number;
     bigint_result_t div_res = bigint_divmod(a, b);
     if (div_res.status != BIGINT_OK) {
         printf("Error while dividing two big numbers: %s\n", div_res.message);
@@ -377,22 +373,20 @@ int bigint_usage() {
         return 1;
     }
 
-    bigint_t *q = div_res.value.division.quotient;
-    bigint_t *r = div_res.value.division.remainder;
+    bigint_t *quotient = div_res.value.division.quotient;
+    bigint_t *remainder = div_res.value.division.remainder;
 
     // Print result
-    printf("a / b = ");
-    bigint_print(q);
-    printf("\n");
-    bigint_print(r);
-    printf("\n");
+    bigint_printf(
+    "457349545684946456456456567567 / 43569678678678678678678432 (should be 10,496) = %B\
+    \n457349545684946456456456567567 %% 43569678678678678678678432 (should be 42,198,273,535,045,045,047,745,295) = %B\n",
+        quotient, remainder);
 
-    bigint_destroy(a); bigint_destroy(b);
-    bigint_destroy(q); bigint_destroy(r);
-
-
+    // Destroy big numbers
     bigint_destroy(x); bigint_destroy(y);
-    bigint_destroy(sum); bigint_destroy(diff); bigint_destroy(prod);
+    bigint_destroy(a); bigint_destroy(b);
+    bigint_destroy(sum); bigint_destroy(diff); 
+    bigint_destroy(prod); bigint_destroy(quotient); bigint_destroy(remainder);
 
     return 0;
 }

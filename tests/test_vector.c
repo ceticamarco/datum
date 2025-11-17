@@ -208,7 +208,7 @@ void test_vector_sort_string() {
 
 // Sort vector with custom data type
 typedef struct {
-    char name[256];
+    const char *name;
     int age;
 } Person;
 
