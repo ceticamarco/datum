@@ -15,7 +15,7 @@
 #include "../src/vector.h"
 
 // Create a new vector
-void test_vector_new() {
+void test_vector_new(void) {
     vector_result_t res = vector_new(5, sizeof(int));
 
     assert(res.status == VECTOR_OK);
@@ -27,14 +27,14 @@ void test_vector_new() {
 }
 
 // Create a vector with zero capacity
-void test_vector_new_zcap() {
+void test_vector_new_zcap(void) {
     vector_result_t res = vector_new(0, sizeof(int));
 
     assert(res.status == VECTOR_ERR_ALLOCATE);
 }
 
 // Push elements to vector
-void test_vector_push() {
+void test_vector_push(void) {
     vector_result_t res = vector_new(5, sizeof(int));
 
     assert(res.status == VECTOR_OK);
@@ -54,7 +54,7 @@ void test_vector_push() {
 }
 
 // Trigger vector reallocation
-void test_vector_push_realloc() {
+void test_vector_push_realloc(void) {
     vector_result_t res = vector_new(1, sizeof(int));
 
     assert(res.status == VECTOR_OK);
@@ -72,7 +72,7 @@ void test_vector_push_realloc() {
 }
 
 // Get vector elements
-void test_vector_get() {
+void test_vector_get(void) {
     vector_result_t res = vector_new(5, sizeof(int));
 
     assert(res.status == VECTOR_OK);
@@ -89,7 +89,7 @@ void test_vector_get() {
 }
 
 // Test out of bounds
-void test_vector_get_ofb() {
+void test_vector_get_ofb(void) {
     vector_result_t res = vector_new(5, sizeof(int));
 
     assert(res.status == VECTOR_OK);
@@ -119,7 +119,7 @@ vector_order_t cmp_int_desc(const void *x, const void *y) {
     return cmp_int_asc(y, x);
 }
 
-void test_vector_sort_int_asc() {
+void test_vector_sort_int_asc(void) {
     vector_result_t res = vector_new(5, sizeof(int));
 
     assert(res.status == VECTOR_OK);
@@ -134,7 +134,9 @@ void test_vector_sort_int_asc() {
     assert(sort_res.status == VECTOR_OK);
 
     const int expected[] = { -7, 1, 4, 6, 12, 25, 25, 71 };
-    for (size_t idx = 0; idx < vector_size(v); idx++) {
+
+    const size_t sz = vector_size(v);
+    for (size_t idx = 0; idx < sz; idx++) {
         int *val = (int*)vector_get(v, idx).value.element;
         assert(*val == expected[idx]);
     }
@@ -142,7 +144,7 @@ void test_vector_sort_int_asc() {
     vector_destroy(v);
 }
 
-void test_vector_sort_int_desc() {
+void test_vector_sort_int_desc(void) {
     vector_result_t res = vector_new(5, sizeof(int));
 
     assert(res.status == VECTOR_OK);
@@ -157,7 +159,9 @@ void test_vector_sort_int_desc() {
     assert(sort_res.status == VECTOR_OK);
 
     const int expected[] = { 71, 25, 25, 12, 6, 4, 1, -7 };
-    for (size_t idx = 0; idx < vector_size(v); idx++) {
+
+    const size_t sz = vector_size(v);
+    for (size_t idx = 0; idx < sz; idx++) {
         int *val = (int*)vector_get(v, idx).value.element;
         assert(*val == expected[idx]);
     }
@@ -183,7 +187,7 @@ vector_order_t cmp_string_desc(const void *x, const void *y) {
     return VECTOR_ORDER_EQ;
 }
 
-void test_vector_sort_string() {
+void test_vector_sort_string(void) {
     vector_result_t res = vector_new(5, sizeof(char*));
 
     assert(res.status == VECTOR_OK);
@@ -198,7 +202,9 @@ void test_vector_sort_string() {
     assert(sort_res.status == VECTOR_OK);
 
     const char *expected[] = { "world!", "system-programming", "hello", "foo", "embedded", "bar"};
-    for (size_t idx = 0; idx < vector_size(v); idx++) {
+
+    const size_t sz = vector_size(v);
+    for (size_t idx = 0; idx < sz; idx++) {
         const char *val = *(const char**)vector_get(v, idx).value.element;
         assert(!strcmp(val, expected[idx]));
     }
@@ -234,7 +240,7 @@ vector_order_t cmp_person_by_name(const void *x, const void *y) {
     return VECTOR_ORDER_EQ;
 }
 
-void test_vector_sort_struct_by_age() {
+void test_vector_sort_struct_by_age(void) {
     vector_result_t res = vector_new(5, sizeof(Person));
 
     assert(res.status == VECTOR_OK);
@@ -257,7 +263,8 @@ void test_vector_sort_struct_by_age() {
         { .name = "Bob", .age = 45 }
     };
 
-    for (size_t idx = 0; idx < vector_size(people); idx++) {
+    const size_t sz = sizeof(expected) / sizeof(expected[0]);
+    for (size_t idx = 0; idx < sz; idx++) {
         Person *p = (Person*)vector_get(people, idx).value.element;
         assert(!strcmp(p->name, expected[idx].name));
         assert(p->age == expected[idx].age);
@@ -266,7 +273,7 @@ void test_vector_sort_struct_by_age() {
     vector_destroy(people);
 }
 
-void test_vector_sort_struct_by_name() {
+void test_vector_sort_struct_by_name(void) {
     vector_result_t res = vector_new(5, sizeof(Person));
 
     assert(res.status == VECTOR_OK);
@@ -295,7 +302,8 @@ void test_vector_sort_struct_by_name() {
         { .name = "Sophia", .age = 45 }
     };
 
-    for (size_t idx = 0; idx < vector_size(people); idx++) {
+    const size_t sz = vector_size(people);
+    for (size_t idx = 0; idx < sz; idx++) {
         Person *p = (Person*)vector_get(people, idx).value.element;
         assert(!strcmp(p->name, expected[idx].name));
         assert(p->age == expected[idx].age);
@@ -305,7 +313,7 @@ void test_vector_sort_struct_by_name() {
 }
 
 // Set vector element
-void test_vector_set() {
+void test_vector_set(void) {
     vector_result_t res = vector_new(5, sizeof(int));
 
     assert(res.status == VECTOR_OK);
@@ -324,7 +332,7 @@ void test_vector_set() {
 }
 
 // Set vector element out of bounds
-void test_vector_set_ofb() {
+void test_vector_set_ofb(void) {
     vector_result_t res = vector_new(5, sizeof(int));
 
     assert(res.status == VECTOR_OK);
@@ -340,7 +348,7 @@ void test_vector_set_ofb() {
 }
 
 // Pop element from vector
-void test_vector_pop() {
+void test_vector_pop(void) {
     vector_result_t res = vector_new(5, sizeof(int));
 
     assert(res.status == VECTOR_OK);
@@ -361,7 +369,7 @@ void test_vector_pop() {
 }
 
 // Test pop element from empty vector
-void test_vector_pop_empty() {
+void test_vector_pop_empty(void) {
     vector_result_t res = vector_new(5, sizeof(int));
 
     assert(res.status == VECTOR_OK);
@@ -374,7 +382,7 @@ void test_vector_pop_empty() {
 }
 
 // Clear vector
-void test_vector_clear() {
+void test_vector_clear(void) {
     vector_result_t res = vector_new(5, sizeof(int));
 
     assert(res.status == VECTOR_OK);
@@ -396,7 +404,7 @@ void test_vector_clear() {
 }
 
 // Multiple operations in sequence (push, set, pop and clear)
-void test_vector_sequence() {
+void test_vector_sequence(void) {
     vector_result_t res = vector_new(2, sizeof(int));
 
     assert(res.status == VECTOR_OK);
@@ -426,7 +434,7 @@ void test_vector_sequence() {
 }
 
 // Vector with chars
-void test_vector_char() {
+void test_vector_char(void) {
     vector_result_t res = vector_new(5, sizeof(char));
 
     assert(res.status == VECTOR_OK);
@@ -449,7 +457,7 @@ typedef struct {
     int y;
 } Point;
 
-void test_vector_struct() {
+void test_vector_struct(void) {
     vector_result_t res = vector_new(5, sizeof(Point));
 
     assert(res.status == VECTOR_OK);

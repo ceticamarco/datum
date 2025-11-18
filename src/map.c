@@ -1,5 +1,7 @@
 #define SET_MSG(result, msg) \
-    snprintf((char *)result.message, RESULT_MSG_SIZE, msg)
+    do { \
+        snprintf((char *)(result).message, RESULT_MSG_SIZE, "%s", (const char *)msg); \
+    } while (0)
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,7 +37,7 @@ uint64_t hash_key(const char *key) {
  *
  * Returns a map_result_t data type containing a new hash map
  */
-map_result_t map_new() {
+map_result_t map_new(void) {
     map_result_t result = {0};
 
     map_t *map = malloc(sizeof(map_t));

@@ -42,7 +42,7 @@ vector_order_t cmp_int_desc(const void *x, const void *y) {
 }
 
 /*
- * Compile with: gcc main.c src/vector.h
+ * Compile with: gcc main.c src/vector.c
  * Output: Before sorting: -8 20 -10 125 34 9 
  *         After sorting (ascending order): -10 -8 9 20 34 125 
  *         After sorting (descending order): 125 34 20 9 -8 -10 
@@ -55,9 +55,11 @@ int main(void) {
         vector_push(v, &values[idx]);
     }
 
+    const size_t sz = vector_size(v);
+
     // Print unsorted array
     printf("Before sorting: ");
-    for (size_t idx = 0; idx < vector_size(v); idx++) {
+    for (size_t idx = 0; idx < sz; idx++) {
         printf("%d ", *(int*)vector_get(v, idx).value.element);
     }
 
@@ -66,7 +68,7 @@ int main(void) {
 
     // Print sorted array
     printf("\nAfter sorting (ascending order): ");
-    for (size_t idx = 0; idx < vector_size(v); idx++) {
+    for (size_t idx = 0; idx < sz; idx++) {
         printf("%d ", *(int*)vector_get(v, idx).value.element);
     }
 
@@ -75,7 +77,7 @@ int main(void) {
 
     // Print sorted array
     printf("\nAfter sorting (descending order): ");
-    for (size_t idx = 0; idx < vector_size(v); idx++) {
+    for (size_t idx = 0; idx < sz; idx++) {
         printf("%d ", *(int*)vector_get(v, idx).value.element);
     }
 
@@ -124,7 +126,7 @@ vector_order_t cmp_person_by_name(const void *x, const void *y) {
 }
 
 /*
- * Compile with: gcc main.c src/vector.h
+ * Compile with: gcc main.c src/vector.c
  * Output: Sort by age:
  *         Name: Marco, Age: 25
  *         Name: Alice, Age: 28
@@ -149,9 +151,11 @@ int main(void) {
     // Sort array by age
     vector_sort(employees, cmp_person_by_age);
 
+    const size_t sz = vector_size(employees);
+
     // Print sorted array
     printf("Sort by age:\n");
-    for (size_t idx = 0; idx < vector_size(employees); idx++) {
+    for (size_t idx = 0; idx < sz; idx++) {
         Employee *p = (Employee*)vector_get(employees, idx).value.element;
         printf("Name: %s, Age: %d\n", p->name, p->age);
     }
@@ -161,7 +165,7 @@ int main(void) {
     
     // Print sorted array
     printf("\nSort by name:\n");
-    for (size_t idx = 0; idx < vector_size(employees); idx++) {
+    for (size_t idx = 0; idx < sz; idx++) {
         Employee *p = (Employee*)vector_get(employees, idx).value.element;
         printf("Name: %s, Age: %d\n", p->name, p->age);
     }

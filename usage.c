@@ -20,10 +20,14 @@
 
 #include "src/vector.h"
 #include "src/map.h"
+#include "src/bigint.h"
 
-static int vector_usage();
-static int map_usage();
+static int vector_usage(void);
+static int map_usage(void);
+static int bigint_usage(void);
+
 static vector_order_t cmp_int_asc(const void *x, const void *y);
+static vector_order_t cmp_int_desc(const void *x, const void *y);
 
 int main(void) {
     int st;
@@ -34,6 +38,11 @@ int main(void) {
     SEP(50);
 
     st = map_usage();
+    if (st) { return st; }
+
+    SEP(50);
+
+    st = bigint_usage();
     if (st) { return st; }
 
     return 0;
@@ -53,7 +62,7 @@ vector_order_t cmp_int_desc(const void *x, const void *y) {
     return cmp_int_asc(y, x);
 }
 
-int vector_usage() {
+int vector_usage(void) {
     // Create a vector of 3 integers
     vector_result_t res = vector_new(3, sizeof(int));
     if (res.status != VECTOR_OK) {
@@ -79,7 +88,8 @@ int vector_usage() {
     printf("Vector capacity (should be > 5): %zu\n\n", vector_capacity(vector));
 
     // Print the whole vector
-    for (size_t idx = 0; idx < vector_size(vector); idx++) {
+    size_t sz = vector_size(vector);
+    for (size_t idx = 0; idx < sz; idx++) {
         vector_result_t get_res = vector_get(vector, idx);
         if (get_res.status != VECTOR_OK) {
             printf("Cannot retrieve vec[%zu]: %s\n", idx, get_res.message);
@@ -127,7 +137,9 @@ int vector_usage() {
     }
 
     printf("Added new elements. Before sort: ");
-    for (size_t idx = 0; idx < vector_size(vector); idx++) {
+
+    sz = vector_size(vector);
+    for (size_t idx = 0; idx < sz; idx++) {
         vector_result_t sort_get_res = vector_get(vector, idx);
         if (sort_get_res.status != VECTOR_OK) {
             printf("Cannot retrieve vec[%zu]: %s\n", idx, sort_get_res.message);
@@ -148,7 +160,7 @@ int vector_usage() {
     }
 
     printf("After sort in ascending order: ");
-    for (size_t idx = 0; idx < vector_size(vector); idx++) {
+    for (size_t idx = 0; idx < sz; idx++) {
         vector_result_t sort_get_res = vector_get(vector, idx);
         if (sort_get_res.status != VECTOR_OK) {
             printf("Cannot retrieve vec[%zu]: %s\n", idx, sort_get_res.message);
@@ -170,7 +182,7 @@ int vector_usage() {
     }
 
     printf("After sort in descending order: ");
-    for (size_t idx = 0; idx < vector_size(vector); idx++) {
+    for (size_t idx = 0; idx < sz; idx++) {
         vector_result_t sort_get_res = vector_get(vector, idx);
         if (sort_get_res.status != VECTOR_OK) {
             printf("Cannot retrieve vec[%zu]: %s\n", idx, sort_get_res.message);
@@ -194,7 +206,7 @@ int vector_usage() {
     return 0;
 }
 
-int map_usage() {
+int map_usage(void) {
     // Create a new map
     map_result_t res = map_new();
     if (res.status != MAP_OK) {
@@ -225,7 +237,7 @@ int map_usage() {
 
     // Print size and capacity
     printf("Map size (should be 2): %zu\n", map_size(map));
-    printf("Map capacity (should be >=2): %zu\n\n", map_capacity(map));
+    printf("Map capacity (should be > 2): %zu\n\n", map_capacity(map));
 
     // Retrieve keys
     map_result_t get_res = map_get(map, "x");
@@ -282,6 +294,8 @@ int map_usage() {
         printf("Map cleared (size should be 0): %zu\n", map_size(map));
     }
 
+    printf("\n");
+
     // Delete the map
     map_result_t del_res = map_destroy(map);
     if (del_res.status != MAP_OK) {
@@ -289,6 +303,93 @@ int map_usage() {
 
         return 1;
     }
+
+    return 0;
+}
+
+int bigint_usage(void) {
+    // Create two big integers
+    bigint_result_t x_res = bigint_from_string("123456789");
+    if (x_res.status != BIGINT_OK) {
+        printf("Error while creating big number: %s\n", x_res.message);
+
+        return 1;
+    }
+
+    bigint_result_t y_res = bigint_from_string("987654321");
+    if (x_res.status != BIGINT_OK) {
+        printf("Error while creating big number: %s\n", x_res.message);
+
+        return 1;
+    }
+
+    bigint_t *x = x_res.value.number;
+    bigint_t *y = y_res.value.number;
+
+    // Sum two big integers
+    bigint_result_t sum_res = bigint_add(x, y);
+    if (sum_res.status != BIGINT_OK) {
+        printf("Error while summing two big numbers: %s\n", sum_res.message);
+
+        return 1;
+    }
+
+    bigint_t *sum = sum_res.value.number;
+
+    // Print result
+    bigint_printf("123456789 + 987654321 (should be 1,111,111,110) = %B\n", sum);
+
+    // Subtract two big integers
+    bigint_result_t diff_res = bigint_sub(x, y);
+    if (diff_res.status != BIGINT_OK) {
+        printf("Error while subtracting two big numbers: %s\n", diff_res.message);
+
+        return 1;
+    }
+
+    bigint_t *diff = diff_res.value.number;
+
+    // Print result
+    bigint_printf("123456789 - 987654321 (should be -864,197,532) = %B\n", diff);
+
+    // Multiply two big integers
+    bigint_result_t prod_res = bigint_prod(x, y);
+    if (prod_res.status != BIGINT_OK) {
+        printf("Error while multiplying two big numbers: %s\n", prod_res.message);
+
+        return 1;
+    }
+
+    bigint_t *prod = prod_res.value.number;
+
+    // Print result
+    bigint_printf("123456789 * 987654321 (should be 121,932,631,112,635,269) = %B\n", prod);
+
+    bigint_t *a = bigint_from_string("457349545684946456456456567567").value.number;
+    bigint_t *b = bigint_from_string("43569678678678678678678432").value.number;
+
+    // Divide two big integers
+    bigint_result_t div_res = bigint_divmod(a, b);
+    if (div_res.status != BIGINT_OK) {
+        printf("Error while dividing two big numbers: %s\n", div_res.message);
+
+        return 1;
+    }
+
+    bigint_t *quotient = div_res.value.division.quotient;
+    bigint_t *remainder = div_res.value.division.remainder;
+
+    // Print result
+    bigint_printf(
+    "457349545684946456456456567567 / 43569678678678678678678432 (should be 10,496) = %B\
+    \n457349545684946456456456567567 %% 43569678678678678678678432 (should be 42,198,273,535,045,045,047,745,295) = %B\n",
+        quotient, remainder);
+
+    // Destroy big numbers
+    bigint_destroy(x); bigint_destroy(y);
+    bigint_destroy(a); bigint_destroy(b);
+    bigint_destroy(sum); bigint_destroy(diff); 
+    bigint_destroy(prod); bigint_destroy(quotient); bigint_destroy(remainder);
 
     return 0;
 }
