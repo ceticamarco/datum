@@ -134,7 +134,9 @@ void test_vector_sort_int_asc(void) {
     assert(sort_res.status == VECTOR_OK);
 
     const int expected[] = { -7, 1, 4, 6, 12, 25, 25, 71 };
-    for (size_t idx = 0; idx < vector_size(v); idx++) {
+
+    const size_t sz = vector_size(v);
+    for (size_t idx = 0; idx < sz; idx++) {
         int *val = (int*)vector_get(v, idx).value.element;
         assert(*val == expected[idx]);
     }
@@ -157,7 +159,9 @@ void test_vector_sort_int_desc(void) {
     assert(sort_res.status == VECTOR_OK);
 
     const int expected[] = { 71, 25, 25, 12, 6, 4, 1, -7 };
-    for (size_t idx = 0; idx < vector_size(v); idx++) {
+
+    const size_t sz = vector_size(v);
+    for (size_t idx = 0; idx < sz; idx++) {
         int *val = (int*)vector_get(v, idx).value.element;
         assert(*val == expected[idx]);
     }
@@ -198,7 +202,9 @@ void test_vector_sort_string(void) {
     assert(sort_res.status == VECTOR_OK);
 
     const char *expected[] = { "world!", "system-programming", "hello", "foo", "embedded", "bar"};
-    for (size_t idx = 0; idx < vector_size(v); idx++) {
+
+    const size_t sz = vector_size(v);
+    for (size_t idx = 0; idx < sz; idx++) {
         const char *val = *(const char**)vector_get(v, idx).value.element;
         assert(!strcmp(val, expected[idx]));
     }
@@ -208,7 +214,7 @@ void test_vector_sort_string(void) {
 
 // Sort vector with custom data type
 typedef struct {
-    const char *name;
+    char name[256];
     int age;
 } Person;
 
@@ -257,7 +263,8 @@ void test_vector_sort_struct_by_age(void) {
         { .name = "Bob", .age = 45 }
     };
 
-    for (size_t idx = 0; idx < vector_size(people); idx++) {
+    const size_t sz = sizeof(expected) / sizeof(expected[0]);
+    for (size_t idx = 0; idx < sz; idx++) {
         Person *p = (Person*)vector_get(people, idx).value.element;
         assert(!strcmp(p->name, expected[idx].name));
         assert(p->age == expected[idx].age);
@@ -295,7 +302,8 @@ void test_vector_sort_struct_by_name(void) {
         { .name = "Sophia", .age = 45 }
     };
 
-    for (size_t idx = 0; idx < vector_size(people); idx++) {
+    const size_t sz = vector_size(people);
+    for (size_t idx = 0; idx < sz; idx++) {
         Person *p = (Person*)vector_get(people, idx).value.element;
         assert(!strcmp(p->name, expected[idx].name));
         assert(p->age == expected[idx].age);

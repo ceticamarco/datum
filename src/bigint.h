@@ -3,7 +3,7 @@
 
 #define RESULT_MSG_SIZE 64
 
-// Big numbers numerical base (10^9)
+// Numerical base (10^9)
 #define BIGINT_BASE 1000000000
 // Each digit stores values from 0 to 999,999,999
 #define BIGINT_BASE_DIGITS 9

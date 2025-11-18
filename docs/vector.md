@@ -64,7 +64,7 @@ Each method that returns such type indicates whether the operation was successfu
 by setting the `status` field and by providing a descriptive message on the `message`
 field. If the operation was successful (that is, `status == VECTOR_OK`), you can either
 move on with the rest of the program or read the returned value from the sum data type. Of course, you can choose to 
-ignore the return value (if you're brave enough :D), as illustrated in the first part of the README.
+ignore the return value (if you're brave enough :D) as illustrated in the first part of the README.
 
 The documentation for the `vector_sort(map, cmp)` method can be found
 in [the following document](/docs/sort.md). 

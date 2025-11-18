@@ -88,7 +88,8 @@ int vector_usage(void) {
     printf("Vector capacity (should be > 5): %zu\n\n", vector_capacity(vector));
 
     // Print the whole vector
-    for (size_t idx = 0; idx < vector_size(vector); idx++) {
+    size_t sz = vector_size(vector);
+    for (size_t idx = 0; idx < sz; idx++) {
         vector_result_t get_res = vector_get(vector, idx);
         if (get_res.status != VECTOR_OK) {
             printf("Cannot retrieve vec[%zu]: %s\n", idx, get_res.message);
@@ -136,7 +137,9 @@ int vector_usage(void) {
     }
 
     printf("Added new elements. Before sort: ");
-    for (size_t idx = 0; idx < vector_size(vector); idx++) {
+
+    sz = vector_size(vector);
+    for (size_t idx = 0; idx < sz; idx++) {
         vector_result_t sort_get_res = vector_get(vector, idx);
         if (sort_get_res.status != VECTOR_OK) {
             printf("Cannot retrieve vec[%zu]: %s\n", idx, sort_get_res.message);
@@ -157,7 +160,7 @@ int vector_usage(void) {
     }
 
     printf("After sort in ascending order: ");
-    for (size_t idx = 0; idx < vector_size(vector); idx++) {
+    for (size_t idx = 0; idx < sz; idx++) {
         vector_result_t sort_get_res = vector_get(vector, idx);
         if (sort_get_res.status != VECTOR_OK) {
             printf("Cannot retrieve vec[%zu]: %s\n", idx, sort_get_res.message);
@@ -179,7 +182,7 @@ int vector_usage(void) {
     }
 
     printf("After sort in descending order: ");
-    for (size_t idx = 0; idx < vector_size(vector); idx++) {
+    for (size_t idx = 0; idx < sz; idx++) {
         vector_result_t sort_get_res = vector_get(vector, idx);
         if (sort_get_res.status != VECTOR_OK) {
             printf("Cannot retrieve vec[%zu]: %s\n", idx, sort_get_res.message);

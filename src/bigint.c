@@ -315,7 +315,8 @@ bigint_result_t bigint_clone(const bigint_t *number) {
     cloned->is_negative = number->is_negative;
 
     // Copy digits
-    for (size_t idx = 0; idx < vector_size(number->digits); idx++) {
+    const size_t sz = vector_size(number->digits);
+    for (size_t idx = 0; idx < sz; idx++) {
         vector_result_t get_res = vector_get(number->digits, idx);
         if (get_res.status != VECTOR_OK) {
             vector_destroy(cloned->digits);
@@ -546,10 +547,12 @@ bigint_result_t bigint_add_abs(const bigint_t *x, const bigint_t *y) {
     long long carry = 0;
     size_t idx = 0;
 
-    while (idx < vector_size(x->digits) || idx < vector_size(y->digits) || carry) {
+    const size_t x_size = vector_size(x->digits);
+    const size_t y_size = vector_size(y->digits);
+    while (idx < x_size || idx < y_size || carry) {
         long long partial_sum = carry;
 
-        if (idx < vector_size(x->digits)) {
+        if (idx < x_size) {
             vector_result_t get_res = vector_get(x->digits, idx);
             if (get_res.status != VECTOR_OK) {
                 vector_destroy(sum->digits);
@@ -564,7 +567,7 @@ bigint_result_t bigint_add_abs(const bigint_t *x, const bigint_t *y) {
             partial_sum += *x_digit;
         }
 
-        if (idx < vector_size(y->digits)) {
+        if (idx < y_size) {
             vector_result_t get_res = vector_get(y->digits, idx);
             if (get_res.status != VECTOR_OK) {
                 vector_destroy(sum->digits);
@@ -643,7 +646,9 @@ bigint_result_t bigint_sub_abs(const bigint_t *x, const bigint_t *y) {
 
     long long borrow = 0;
 
-    for (size_t idx = 0; idx < vector_size(x->digits); idx++) {
+    const size_t x_size = vector_size(x->digits);
+    const size_t y_size = vector_size(y->digits);
+    for (size_t idx = 0; idx < x_size; idx++) {
         vector_result_t x_get_res = vector_get(x->digits, idx);
         if (x_get_res.status != VECTOR_OK) {
             vector_destroy(difference->digits);
@@ -657,7 +662,7 @@ bigint_result_t bigint_sub_abs(const bigint_t *x, const bigint_t *y) {
         int *x_digit = (int*)x_get_res.value.element;
         long long partial_difference = *x_digit - borrow;
 
-        if (idx < vector_size(y->digits)) {
+        if (idx < y_size) {
             vector_result_t y_get_res = vector_get(y->digits, idx);
             if (y_get_res.status != VECTOR_OK) {
                 vector_destroy(difference->digits);
@@ -1074,7 +1079,8 @@ bigint_result_t bigint_shift_left(const bigint_t *num, size_t n) {
     }
 
     // Copy back original digits
-    for (size_t idx = 0; idx < vector_size(num->digits); idx++) {
+    const size_t num_size = vector_size(num->digits);
+    for (size_t idx = 0; idx < num_size; idx++) {
         vector_result_t get_res = vector_get(num->digits, idx);
         if (get_res.status != VECTOR_OK) {
             vector_destroy(shifted->digits);

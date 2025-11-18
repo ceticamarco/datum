@@ -12,7 +12,7 @@ jobs:
 
       - name: Build Datum
         run: |
-          make clean all
+          make clean all CC=clang
 
       - name: Run unit tests
         run: |
