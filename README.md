@@ -133,7 +133,7 @@ and a sample usage for every available method. To run it, first issue the follow
 $ make clean all
 ```
 
-This will compile the library as well as the `usage.c` file and the unit tests. After that, you can run it by typing `./usage`.
+This will compile the library as well as the `usage.c` file, the unit tests and the benchmark. After that, you can run it by typing `./usage`.
 
 ## Documentation
 For additional details about this library (internal design, memory
@@ -147,6 +147,15 @@ $ make clean all
 $ ./test_vector
 $ ./test_map
 $ ./test_bigint
+```
+
+## Benchmark
+Under the [`benchmark/`](/benchmark/) folder, you can find a simple benchmark program that stress the `Vector` and the `Map` data structures. You can run it by issuing the following command:
+
+```sh
+$ ./benchmark_datum
+Computing Vector average time...average time: 18 ms
+Computing Map average time...average time: 31 ms
 ```
 
 ## License
