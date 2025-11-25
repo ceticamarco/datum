@@ -97,6 +97,58 @@ void test_map_get_invalid(void) {
     map_destroy(map);
 }
 
+// Get from map full of deleted slots
+// If the table contains no ENTRY_EMPTY slots 
+// (i.e., the table is full of ENTRY_DELETED slots),
+// map_get and map_remove should NOT loop forever
+void test_map_get_deleted_slots(void) {
+    map_result_t res = map_new();
+
+    assert(res.status == MAP_OK);
+    map_t *map = res.value.map;
+
+    // Fill INITIAL_CAP (=4) without trigger resizing
+    map_add(map, "x", (void*)1);
+    map_add(map, "y", (void*)2);
+    map_add(map, "z", (void*)3);
+    map_add(map, "j", (void*)4);
+
+    // Remove all ENTRY_OCCUPIED slots. 
+    // This function should resize the map when the load factor is too big
+    // and should also garbage-collect all the ENTRY_DELETED entries.
+    // Tombstone count should therefore be equal to 3 and capacity should be doubled
+    map_remove(map, "x");
+    map_remove(map, "y");
+    map_remove(map, "z");
+    map_remove(map, "j");
+
+    assert(map->tombstone_count == 3);
+    assert(map->capacity == 8);
+    assert(map->size == 0);
+
+    // Retrieving a deleted element should return an error
+    // but should not loop forever
+    map_result_t get_deleted_res = map_get(map, "y");
+    assert(get_deleted_res.status == MAP_ERR_NOT_FOUND);
+
+    // Adding a new element should increase the size
+    // and should not loop forever
+    const int k = 5;
+    map_result_t add_res = map_add(map, "k", (void*)&k);
+    assert(add_res.status == MAP_OK);
+
+    assert(map->tombstone_count < map->capacity);
+    assert(map->capacity == 8);
+    assert(map->size == 1);
+
+    // Retrieving an ENTRY_OCCUPIED element should works normally
+    map_result_t get_res = map_get(map, "k");
+    assert(get_res.status == MAP_OK);
+    assert(*(int*)get_res.value.element == 5);
+    
+    map_destroy(map);
+}
+
 // Map with heterogeneous types
 void test_map_mixed(void) {
     map_result_t res = map_new();
@@ -324,6 +376,7 @@ int main(void) {
     TEST(map_add_multiple);
     TEST(map_get);
     TEST(map_get_invalid);
+    TEST(map_get_deleted_slots);
     TEST(map_mixed);
     TEST(map_update);
     TEST(map_remove);

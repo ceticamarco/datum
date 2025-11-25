@@ -54,6 +54,7 @@ defined as follows:
 typedef enum {
     MAP_OK = 0x0,
     MAP_ERR_ALLOCATE,
+    MAP_ERR_OVERFLOW,
     MAP_ERR_INVALID,
     MAP_ERR_NOT_FOUND
 } map_status_t;
