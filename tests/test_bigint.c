@@ -142,6 +142,45 @@ void test_bigint_prod(void) {
     bigint_destroy(prod.value.number);
 }
 
+// Test product betweem very big numbers (i.e., use Karatsuba)
+void test_bigint_very_large_prod(void) {
+    const char *big_x_origin = "8036732204560262312865077650774313136023641621894661847778962273940232785242208265819059749867858355";
+    const char *big_y_origin = "7078840479830524979114102683681365071561983635405714511439038016617918064981439736383067887133445937";
+    size_t x_len = strlen(big_x_origin);
+    size_t y_len = strlen(big_y_origin);
+    size_t large_x_size = x_len * 100 + 1;
+    size_t large_y_size = y_len * 100 + 1;
+
+    char *large_x = malloc(large_x_size);
+    char *large_y = malloc(large_y_size);
+
+    assert(large_x != NULL);
+    assert(large_y != NULL);
+
+    large_x[0] = '\0';
+    large_y[0] = '\0';
+
+    for (size_t idx = 0; idx < 50; idx++) {
+        strcat(large_x, big_x_origin);
+        strcat(large_y, big_y_origin);
+    }
+
+    bigint_result_t x = bigint_from_string(large_x);
+    bigint_result_t y = bigint_from_string(large_y);
+
+    assert(x.status == BIGINT_OK);
+    assert(y.status == BIGINT_OK);
+
+    bigint_result_t product_res = bigint_prod(x.value.number, y.value.number);
+
+    assert(product_res.status == BIGINT_OK);
+
+    bigint_destroy(product_res.value.number);
+    bigint_destroy(x.value.number);
+    bigint_destroy(y.value.number);
+    free(large_x); free(large_y);
+}
+
 // Test product between mixed negative big numbers
 void test_bigint_prod_mixed(void) {
     bigint_result_t x = bigint_from_int(-1234);
@@ -363,6 +402,7 @@ int main(void) {
     TEST(bigint_sub_neg);
     TEST(bigint_sub_mixed);
     TEST(bigint_prod);
+    TEST(bigint_very_large_prod);
     TEST(bigint_prod_mixed);
     TEST(bigint_prod_neg);
     TEST(bigint_div);

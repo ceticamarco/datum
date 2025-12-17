@@ -1413,9 +1413,11 @@ bigint_result_t bigint_karatsuba(const bigint_t *x, const bigint_t *y) {
 
     const size_t x_size = vector_size(x->digits);
     const size_t y_size = vector_size(y->digits);
+    const size_t min_size = x_size < y_size ? x_size : y_size;
+    const size_t max_size = x_size > y_size ? x_size : y_size;
 
     // Base case using "grade school" quadratic algorithm
-    if (x_size <= 32 || y_size <= 32) {
+    if (min_size <= 32 || max_size / min_size > 2) {
         return bigint_karatsuba_base(x, y);
     }
 
@@ -1497,6 +1499,8 @@ bigint_result_t bigint_karatsuba(const bigint_t *x, const bigint_t *y) {
     result.value.number = product;
     result.status = BIGINT_OK;
     SET_MSG(result, "Product between big integers was successful");
+
+    return result;
 
 cleanup: // Destroy intermediate allocations on error
     if (x1) { bigint_destroy(x1); }

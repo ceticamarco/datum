@@ -17,6 +17,8 @@
 } while(0)
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "src/vector.h"
 #include "src/map.h"
@@ -308,15 +310,42 @@ int map_usage(void) {
 }
 
 int bigint_usage(void) {
-    // Create two big integers
-    bigint_result_t x_res = bigint_from_string("123456789");
+    const char *x_origin = "8036732204560262312865077650774313136023641621894661847778962273940232785242208265819059749867858355";
+    const char *y_origin = "7078840479830524979114102683681365071561983635405714511439038016617918064981439736383067887133445937";
+    const size_t x_len = strlen(x_origin);
+    const size_t y_len = strlen(y_origin);
+    const size_t large_x_size = x_len * 100 + 1;
+    const size_t large_y_size = y_len * 100 + 1;
+
+    char *large_x = malloc(large_x_size);
+    char *large_y = malloc(large_y_size);
+
+    if (large_x == NULL || large_y == NULL) {
+        printf("Error while allocating memory for strings\n");
+        free(large_x);
+        free(large_y);
+
+        return 1;
+    }
+
+    large_x[0] = '\0';
+    large_y[0] = '\0';
+
+    // Concatenate 100 times
+    for (size_t idx = 0; idx < 100; idx++) {
+        strcat(large_x, x_origin);
+        strcat(large_y, y_origin);
+    }
+    
+    // Create two big integers from previous strings
+    bigint_result_t x_res = bigint_from_string(large_x);
     if (x_res.status != BIGINT_OK) {
         printf("Error while creating big number: %s\n", x_res.message);
 
         return 1;
     }
 
-    bigint_result_t y_res = bigint_from_string("987654321");
+    bigint_result_t y_res = bigint_from_string(large_y);
     if (x_res.status != BIGINT_OK) {
         printf("Error while creating big number: %s\n", x_res.message);
 
@@ -337,7 +366,7 @@ int bigint_usage(void) {
     bigint_t *sum = sum_res.value.number;
 
     // Print result
-    bigint_printf("123456789 + 987654321 (should be 1,111,111,110) = %B\n", sum);
+    bigint_printf("Sum result = %B\n", sum);
 
     // Subtract two big integers
     bigint_result_t diff_res = bigint_sub(x, y);
@@ -350,7 +379,7 @@ int bigint_usage(void) {
     bigint_t *diff = diff_res.value.number;
 
     // Print result
-    bigint_printf("123456789 - 987654321 (should be -864,197,532) = %B\n", diff);
+    bigint_printf("difference result = %B\n", diff);
 
     // Multiply two big integers
     bigint_result_t prod_res = bigint_prod(x, y);
@@ -363,10 +392,10 @@ int bigint_usage(void) {
     bigint_t *prod = prod_res.value.number;
 
     // Print result
-    bigint_printf("123456789 * 987654321 (should be 121,932,631,112,635,269) = %B\n", prod);
+    bigint_printf("multiplication result = %B\n", prod);
 
-    bigint_t *a = bigint_from_string("457349545684946456456456567567").value.number;
-    bigint_t *b = bigint_from_string("43569678678678678678678432").value.number;
+    bigint_t *a = bigint_from_string(x_origin).value.number;
+    bigint_t *b = bigint_from_string(y_origin).value.number;
 
     // Divide two big integers
     bigint_result_t div_res = bigint_divmod(a, b);
@@ -381,15 +410,16 @@ int bigint_usage(void) {
 
     // Print result
     bigint_printf(
-    "457349545684946456456456567567 / 43569678678678678678678432 (should be 10,496) = %B\
-    \n457349545684946456456456567567 %% 43569678678678678678678432 (should be 42,198,273,535,045,045,047,745,295) = %B\n",
+    "division result = %B\
+    \nmod result = %B\n",
         quotient, remainder);
 
-    // Destroy big numbers
+    // Destroy big numbers and strings
     bigint_destroy(x); bigint_destroy(y);
     bigint_destroy(a); bigint_destroy(b);
     bigint_destroy(sum); bigint_destroy(diff); 
     bigint_destroy(prod); bigint_destroy(quotient); bigint_destroy(remainder);
+    free(large_x); free(large_y);
 
     return 0;
 }

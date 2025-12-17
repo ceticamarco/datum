@@ -90,3 +90,12 @@ of them has an unique scope as described below:
 - `compare_status`: result of `bigint_compare`;  
 - `string_num`: result of `bigint_to_string`.
 
+
+> [!IMPORTANT]
+> Currently, the division implementation employs a quadratic-time algorithm derived from the conventional _"grade school"_ long-division method.
+> This approach performs adequately for integers of modest size (up to approximately 200 digits) but becomes highly inefficient when handling
+> substantially larger integers (~1500 digits).
+>
+> Improving the efficiency of this algorithm would require further research into advanced
+> numerical algorithms, which is something that I currently not inclined to pursue.
+

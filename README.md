@@ -135,6 +135,13 @@ $ make clean all
 
 This will compile the library as well as the `usage.c` file, the unit tests and the benchmark. After that, you can run it by typing `./usage`.
 
+> [!NOTE]
+> This project is primarily developed for learning purposes and was not created with industrial
+> or production use in mind. As such, it is not intended to compete with any existing C library.
+> In particular, the big number implementation does not aim to match the design, the maturity and
+> the performance of established solutions such as the
+> GNU Multiple Precision Arithmetic Library (GMP).
+
 ## Documentation
 For additional details about this library (internal design, memory
 management, data ownership, etc.) go to the [docs folder](/docs).
@@ -157,6 +164,7 @@ $ ./benchmark_datum
 Computing Vector average time...average time: 18 ms
 Computing Map average time...average time: 31 ms
 ```
+
 
 ## License
 This library is released under the GPLv3 license. You can find a copy of the license with this repository or by visiting
