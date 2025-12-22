@@ -31,8 +31,10 @@ At the time being, `Vector` supports the following methods:
 - `vector_result_t vector_get(vector, index)`: return the value indexed by `index` if it exists;  
 - `map_result_t vector_sort(map, cmp)`: sort array using `cmp` function;  
 - `vector_result_t vector_pop(vector)`: pop last element from the vector following the LIFO policy;  
-- `vector_result_t vector_clear(vector)`: logically reset the vector. That is, new pushes
-will overwrite the memory;  
+- `vector_result_t vector_map(vector, callback, env)`: apply `callback` function to vector (in-place);  
+- `vector_result_t vector_filter(vector, callback, env)`: filter vector using `callback` (in-place);  
+- `vector_result_t vector_reduce(vector, accumulator, callback, env)`: fold/reduce vector using `callback`;  
+- `vector_result_t vector_clear(vector)`: logically reset the vector. That is, new pushes will overwrite the memory;  
 - `vector_result_t vector_destroy(vector)`: delete the vector;  
 - `size_t vector_size(vector)`: return vector size (i.e., the number of elements);  
 - `size_t vector_capacity(vector)`: return vector capacity (i.e., vector total size).
@@ -66,5 +68,21 @@ field. If the operation was successful (that is, `status == VECTOR_OK`), you can
 move on with the rest of the program or read the returned value from the sum data type. Of course, you can choose to 
 ignore the return value (if you're brave enough :D) as illustrated in the first part of the README.
 
-The documentation for the `vector_sort(map, cmp)` method can be found
-in [the following document](/docs/sort.md). 
+## Functional methods
+`Vector` provides three functional methods called `map`, `filter` and `reduce` which allow the caller to apply a computation to the vector,
+filter the vector according to a function and fold the vector to a single value according to a custom function, respectively.
+
+The caller is responsible to define a custom `callback` function that satisfy the following constraints:
+
+```c
+typedef void (*map_callback_fn)(void *element, void *env);
+typedef int (*vector_filter_fn)(const void *element, void *env);
+typedef void (*vector_reduce_fn)(void *accumulator, const void *element, void *env);
+```
+
+In particular, you should be aware of the following design choices:
+
+- The `vector_reduce` callback method requires the caller to initialize an _"accumulator"_ variable before calling this method;  
+- The `vector_filter` callback method is expected to return non-zero to keep the element and zero to filter it out.  
+
+The documentation for the `vector_sort(map, cmp)` method can be found in [the following document](/docs/sort.md). 

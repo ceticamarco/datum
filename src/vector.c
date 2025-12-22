@@ -384,6 +384,143 @@ vector_result_t vector_pop(vector_t *vector) {
 }
 
 /**
+ * vector_map
+ *  @vector: a non-null vector
+ *  @callback: callback function
+ *  @env: optional captured environment
+ *
+ *  Transforms each element of @vector in place by applying @callback
+ *
+ *  Returns a vector_result_t data type
+ */
+vector_result_t vector_map(vector_t *vector, map_callback_fn callback, void *env) {
+    vector_result_t result = {0};
+
+    if (vector == NULL) {
+        result.status = VECTOR_ERR_INVALID;
+        SET_MSG(result, "Invalid vector");
+
+        return result;
+    }
+
+    if (callback == NULL) {
+        result.status = VECTOR_ERR_INVALID;
+        SET_MSG(result, "Invalid callback function");
+
+        return result;
+    }
+
+    for (size_t idx = 0; idx < vector->size; idx++) {
+        void *element = (uint8_t*)vector->elements + (idx * vector->data_size);
+        callback(element, env);
+    }
+
+    result.status = VECTOR_OK;
+    SET_MSG(result, "Vector successfully mapped");
+
+    return result;
+}
+
+/**
+ * vector_filter
+ *  @vector: a non-null vector
+ *  @callback: callback function
+ *  @env: optional captured environment
+ *
+ *  Filters elements from @vector using @callback.
+ *  Elements are shifted in place, vector size is updated.
+ *
+ *  Returns a vector_result_t data type
+ */
+vector_result_t vector_filter(vector_t *vector, vector_filter_fn callback, void *env) {
+    vector_result_t result = {0};
+
+    if (vector == NULL) {
+        result.status = VECTOR_ERR_INVALID;
+        SET_MSG(result, "Invalid vector");
+
+        return result;
+    }
+
+    if (callback == NULL) {
+        result.status = VECTOR_ERR_INVALID;
+        SET_MSG(result, "Invalid callback function");
+
+        return result;
+    }
+
+    size_t write_idx = 0;
+    for (size_t read_idx = 0; read_idx < vector->size; read_idx++) {
+        void *element = (uint8_t*)vector->elements + (read_idx * vector->data_size);
+
+        // Remove elements from @vector for which @callback returns zero
+        // If @callback returns non-zero, element is kept
+        if (callback(element, env)) {
+            if (read_idx != write_idx) {
+                void *dest = (uint8_t*)vector->elements + (write_idx * vector->data_size);
+                memcpy(dest, element, vector->data_size);
+            }
+            write_idx++;
+        }
+    }
+
+    // Update vector size
+    vector->size = write_idx;
+
+    result.status = VECTOR_OK;
+    SET_MSG(result, "Vector successfully filtered");
+
+    return result;
+}
+
+/**
+ * vecto_reduce
+ *  @vector: a non-null vector
+ *  @accumulator: pointer to accumulator value
+ *  @callback: callback function
+ *  @env: optional captured environment
+ *
+ *  Reduces @vector to a single value by repeatedly applying @callback
+ *  The @accumulator value should be initialized by the caller before invoking this function
+ *
+ *  Returns a vector_result_t data type
+ */
+vector_result_t vector_reduce(const vector_t *vector, void *accumulator, vector_reduce_fn callback, void *env) {
+    vector_result_t result = {0};
+
+    if (vector == NULL) {
+        result.status = VECTOR_ERR_INVALID;
+        SET_MSG(result, "Invalid vector");
+
+        return result;
+    }
+
+    if (accumulator == NULL) {
+        result.status = VECTOR_ERR_INVALID;
+        SET_MSG(result, "Invalid accumulator");
+
+        return result;
+    }
+
+    if (callback == NULL) {
+        result.status = VECTOR_ERR_INVALID;
+        SET_MSG(result, "Invalid callback function");
+
+        return result;
+    }
+
+    for (size_t idx = 0; idx < vector->size; idx++) {
+        const void *element = (uint8_t*)vector->elements + (idx * vector->data_size);
+        callback(accumulator, element, env);
+    }
+
+    result.status = VECTOR_OK;
+    SET_MSG(result, "Vector successfully reduced");
+
+    return result;
+}
+
+/**
  * vector_clear
  *  @vector: a non-null vector
  *

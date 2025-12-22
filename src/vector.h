@@ -36,7 +36,11 @@ typedef enum {
     VECTOR_ORDER_GT
 } vector_order_t;
 
+// Callback functions
 typedef vector_order_t (*vector_cmp_fn)(const void *x, const void *y);
+typedef void (*map_callback_fn)(void *element, void *env);
+typedef int (*vector_filter_fn)(const void *element, void *env);
+typedef void (*vector_reduce_fn)(void *accumulator, const void *element, void *env);
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,6 +53,9 @@ vector_result_t vector_set(vector_t *vector, size_t index, void *value);
 vector_result_t vector_get(vector_t *vector, size_t index);
 vector_result_t vector_sort(vector_t *vector, vector_cmp_fn cmp);
 vector_result_t vector_pop(vector_t *vector);
+vector_result_t vector_map(vector_t *vector, map_callback_fn callback, void *env);
+vector_result_t vector_filter(vector_t *vector, vector_filter_fn callback, void *env);
+vector_result_t vector_reduce(const vector_t *vector, void *accumulator, vector_reduce_fn callback, void *env);
 vector_result_t vector_clear(vector_t *vector);
 vector_result_t vector_destroy(vector_t *vector);
 

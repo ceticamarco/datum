@@ -312,6 +312,114 @@ void test_vector_sort_struct_by_name(void) {
     vector_destroy(people);
 }
 
+// Map vector elements
+void square(void *element, void *env) {
+    (void)(env);
+    int *value = (int*)element;
+    *value = (*value) * (*value);
+}
+
+void test_vector_map(void) {
+    vector_result_t res = vector_new(5, sizeof(int));
+
+    assert(res.status == VECTOR_OK);
+    vector_t *v = res.value.vector;
+
+    int values[] = { 25, 4, 3, 12, 19, 45 };
+    for (size_t idx = 0; idx < 6; idx++) {
+        vector_push(v, &values[idx]);
+    }
+
+    vector_result_t square_res = vector_map(v, square, NULL);
+    assert(square_res.status == VECTOR_OK);
+
+    const int expected[] = { 625, 16, 9, 144, 361, 2025 };
+    const size_t sz = vector_size(v);
+    for (size_t idx = 0; idx < sz; idx++) {
+        int *val = (int*)vector_get(v, idx).value.element;
+        assert(*val == expected[idx]);
+    }
+
+    vector_destroy(v);
+}
+
+// Filter vector elements
+typedef struct {
+    double temperature;
+    uint64_t timestamp;
+} weather_record_t;
+
+typedef struct {
+    double min_temp;
+    double max_temp;
+} temp_threshold_t;
+
+int is_temp_in_range(const void *element, void *env) {
+    const weather_record_t *weather = (const weather_record_t*)element;
+    temp_threshold_t *threshold = (temp_threshold_t*)env;
+
+    return weather->temperature >= threshold->min_temp &&
+           weather->temperature <= threshold->max_temp;
+}
+
+void test_vector_filter(void) {
+    vector_result_t res = vector_new(5, sizeof(weather_record_t));
+
+    assert(res.status == VECTOR_OK);
+    vector_t *v = res.value.vector;
+
+    for (size_t idx = 0; idx < 10; idx++) {
+        weather_record_t record = {
+            .temperature = 20.0 + (idx * 2.5), // between 20.0C and 42.5C
+            .timestamp = 1234567890 + idx
+        };
+
+        vector_push(v, &record);
+    }
+
+    // Filter elements outside the threshold
+    temp_threshold_t threshold = {
+        .min_temp = 15.0,
+        .max_temp = 40.0
+    };
+
+    vector_result_t filter_res = vector_filter(v, is_temp_in_range, &threshold);
+    assert(filter_res.status == VECTOR_OK);
+
+    for (size_t idx = 0; idx < vector_size(v); idx++) {
+        double *val = (double*)vector_get(v, idx).value.element;
+        assert((*val >= 20.0) && (*val <= 40));
+    }
+
+    vector_destroy(v);
+}
+
+// Test reduce
+void add(void *accumulator, const void *element, void *env) {
+    (void)(env);
+    *(int*)accumulator += *(int*)element;
+}
+
+void test_vector_reduce(void) {
+    vector_result_t res = vector_new(5, sizeof(int));
+
+    assert(res.status == VECTOR_OK);
+    vector_t *v = res.value.vector;
+
+    int values[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+    for (size_t idx = 0; idx < 10; idx++) {
+        vector_push(v, &values[idx]);
+    }
+
+    int sum = 0;
+    vector_result_t reduce_res = vector_reduce(v, &sum, add, NULL);
+    assert(reduce_res.status == VECTOR_OK);
+
+    assert(sum == ((10 * 11) / 2));
+
+    vector_destroy(v);
+}
+
 // Set vector element
 void test_vector_set(void) {
     vector_result_t res = vector_new(5, sizeof(int));
@@ -491,6 +599,9 @@ int main(void) {
     TEST(vector_sort_string);
     TEST(vector_sort_struct_by_age);
     TEST(vector_sort_struct_by_name);
+    TEST(vector_map);
+    TEST(vector_filter);
+    TEST(vector_reduce);
     TEST(vector_set);
     TEST(vector_set_ofb);
     TEST(vector_pop);

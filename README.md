@@ -24,23 +24,63 @@ At its simplest, you can use this library as follows:
 
 /*
  * Compile with: gcc main.c src/vector.c
- * Output: First element: 5
- *         Head of vector: 6, size is now: 1 
+ * Output: First element: 1
+ *         Head of vector: 16, size is now: 1
  */ 
+
+vector_order_t cmp_int_asc(const void *x, const void *y) {
+    int x_int = *(const int*)x;
+    int y_int = *(const int*)y;
+
+    if (x_int < y_int) return VECTOR_ORDER_LT;
+    if (x_int > y_int) return VECTOR_ORDER_GT;
+
+    return VECTOR_ORDER_EQ;
+}
+
+void square(void *element, void *env) {
+    (void)(env);
+    int *value = (int*)element;
+    *value = (*value) * (*value);
+}
+
+int is_even(const void *element, void *env) {
+    (void)(env);
+    int value = *(int*)element;
+
+    return (value % 2) == 0;
+}
+
+void add(void *accumulator, const void *element, void *env) {
+    (void)(env);
+    *(int*)accumulator += *(int*)element;
+}
 
 int main(void) {
     // Create an integer vector of initial capacity equal to 5
     vector_t *vec = vector_new(5, sizeof(int)).value.vector;
 
-    // Add two numbers
-    int val = 5;
-    vector_push(vec, &val);
-    // Equivalent as above
-    vector_push(vec, &(int){6});
+    // Add some elements
+    vector_push(vec, &(int){1}); // Equivalent as below
+    int nums[] = {5, 2, 4, 3};
+    for (int idx = 0; idx < 4; idx++) { vector_push(vec, &nums[idx]); }
+
+    // Sort array in ascending order: [1, 2, 3, 4, 5]
+    vector_sort(vec, cmp_int_asc);
 
     // Print 1st element
     const int first = *(int*)vector_get(vec, 0).value.element;
     printf("First element: %d\n", first);
+
+    // Square elements: [1, 2, 3, 4, 5] -> [1, 4, 9, 16, 25]
+    vector_map(vec, square, NULL);
+
+    // Filter even elements: [1, 4, 9, 16, 25] -> [4, 16]
+    vector_filter(vec, is_even, NULL);
+
+    // Sume elements: [4, 16] -> 20
+    int sum = 0;
+    vector_reduce(vec, &sum, add, NULL);
 
     // Pop second element using LIFO policy
     const int head = *(int*)vector_pop(vec).value.element;
