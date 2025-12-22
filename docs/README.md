@@ -7,5 +7,4 @@ At the time being, this documentation includes the following pages:
 
 - [vector.md](vector.md): vector documentation;  
 - [map.md](map.md): map documentation;   
-- [sort.md](sort.md): how to use the `vector_sort` method;  
 - [bigint.md](bigint.md): bigint documentation.

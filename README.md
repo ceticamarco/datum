@@ -28,6 +28,43 @@ At its simplest, you can use this library as follows:
  *         Head of vector: 16, size is now: 1
  */ 
 
+// Callback functions
+vector_order_t cmp_int_asc(const void *x, const void *y);
+void square(void *element, void *env);
+int is_even(const void *element, void *env);
+void add(void *accumulator, const void *element, void *env);
+
+int main(void) {
+    // Create an integer vector of initial capacity equal to 5
+    vector_t *vec = vector_new(5, sizeof(int)).value.vector;
+
+    // Add some elements
+    vector_push(vec, &(int){1}); // Equivalent as below
+    int nums[] = {5, 2, 4, 3};
+    for (int idx = 0; idx < 4; idx++) { vector_push(vec, &nums[idx]); }
+
+    // Sort array in ascending order: [1, 2, 3, 4, 5]
+    vector_sort(vec, cmp_int_asc);
+
+    // Print 1st element
+    const int first = *(int*)vector_get(vec, 0).value.element;
+    printf("First element: %d\n", first);
+
+    int sum = 0;
+    vector_map(vec, square, NULL); // Square elements: [1, 2, 3, 4, 5] -> [1, 4, 9, 16, 25]
+    vector_filter(vec, is_even, NULL); // Filter even elements: [1, 4, 9, 16, 25] -> [4, 16]
+    vector_reduce(vec, &sum, add, NULL); // Sum elements: [4, 16] -> 20
+
+    // Pop second element using LIFO policy
+    const int head = *(int*)vector_pop(vec).value.element;
+    printf("Head of vector: %d, size is now: %zu\n", head, vector_size(vec));
+
+    // Remove vector from memory
+    vector_destroy(vec);
+    
+    return 0;
+}
+
 vector_order_t cmp_int_asc(const void *x, const void *y) {
     int x_int = *(const int*)x;
     int y_int = *(const int*)y;
@@ -54,42 +91,6 @@ int is_even(const void *element, void *env) {
 void add(void *accumulator, const void *element, void *env) {
     (void)(env);
     *(int*)accumulator += *(int*)element;
-}
-
-int main(void) {
-    // Create an integer vector of initial capacity equal to 5
-    vector_t *vec = vector_new(5, sizeof(int)).value.vector;
-
-    // Add some elements
-    vector_push(vec, &(int){1}); // Equivalent as below
-    int nums[] = {5, 2, 4, 3};
-    for (int idx = 0; idx < 4; idx++) { vector_push(vec, &nums[idx]); }
-
-    // Sort array in ascending order: [1, 2, 3, 4, 5]
-    vector_sort(vec, cmp_int_asc);
-
-    // Print 1st element
-    const int first = *(int*)vector_get(vec, 0).value.element;
-    printf("First element: %d\n", first);
-
-    // Square elements: [1, 2, 3, 4, 5] -> [1, 4, 9, 16, 25]
-    vector_map(vec, square, NULL);
-
-    // Filter even elements: [1, 4, 9, 16, 25] -> [4, 16]
-    vector_filter(vec, is_even, NULL);
-
-    // Sume elements: [4, 16] -> 20
-    int sum = 0;
-    vector_reduce(vec, &sum, add, NULL);
-
-    // Pop second element using LIFO policy
-    const int head = *(int*)vector_pop(vec).value.element;
-    printf("Head of vector: %d, size is now: %zu\n", head, vector_size(vec));
-
-    // Remove vector from memory
-    vector_destroy(vec);
-    
-    return 0;
 }
 ```
 
