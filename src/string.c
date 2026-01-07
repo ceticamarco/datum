@@ -10,6 +10,7 @@
 
 #include "string.h"
 
+// Get byte length of a UTF-8 character/symbol
 static inline int utf8_char_len(unsigned char byte) {
     if ((byte & 0x80) == 0x00) return 1;
     if ((byte & 0xE0) == 0xC0) return 2;
@@ -19,6 +20,7 @@ static inline int utf8_char_len(unsigned char byte) {
     return -1;
 }
 
+// Validate an UTF-8 symbol
 static bool utf8_is_char_valid(const char *utf8_char, int *out_len) {
     if (utf8_char == NULL) {
         return false;
@@ -46,6 +48,7 @@ static bool utf8_is_char_valid(const char *utf8_char, int *out_len) {
     return true;
 }
 
+// Validate an UTF-8 symbol and measure byte length and character count in one pass
 static bool utf8_scan(const char *str, size_t *out_byte_size, size_t *out_char_count) {
     size_t b_size = 0;
     size_t c_count = 0;
@@ -72,6 +75,7 @@ static bool utf8_scan(const char *str, size_t *out_byte_size, size_t *out_char_c
     return true;
 }
 
+// Decode an UTF-8 symbol to a codepoint
 static uint32_t utf8_decode(const char *str, int *char_len) {
     unsigned char byte = (unsigned char)*str;
     *char_len = utf8_char_len(byte);
@@ -103,6 +107,40 @@ static uint32_t utf8_decode(const char *str, int *char_len) {
     }
 
     return result;
+}
+
+// Encode a codepoint to an UTF-8 symbol
+static int utf8_encode(uint32_t codepoint, char *out) {
+    if (codepoint <= 0x7F) {
+        out[0] = (char)codepoint;
+        return 1;
+    }
+
+    if (codepoint <= 0x7FF) {
+        out[0] = (char)(0xC0 | (codepoint >> 6));
+        out[1] = (char)(0x80 | (codepoint & 0x3F));
+
+        return 2;
+    }
+
+    if (codepoint <= 0xFFFF) {
+        out[0] = (char)(0xE0 | (codepoint >> 12));
+        out[1] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
+        out[2] = (char)(0x80 | (codepoint & 0x3F));
+
+        return 3;
+    }
+
+    if (codepoint <= 0x10FFFF) {
+        out[0] = (char)(0xF0 | (codepoint >> 18));
+        out[1] = (char)(0x80 | ((codepoint >> 12) & 0x3F));
+        out[2] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
+        out[3] = (char)(0x80 | (codepoint & 0x3F));
+
+        return 4;
+    }
+
+    return 0;
 }
 
 /**
@@ -280,10 +318,10 @@ string_result_t string_substring(const string_t *haystack, const string_t *needl
          while (*p1 && *p2) {
              int l1, l2;
 
-             const uint32_t cp1 = utf8_decode(p1, &l1);
-             const uint32_t cp2 = utf8_decode(p2, &l2);
-             const uint32_t c1 = (cp1 >= 'A' && cp1 <= 'Z') ? cp1 + 32 : cp1;
-             const uint32_t c2 = (cp2 >= 'A' && cp2 <= 'Z') ? cp2 + 32 : cp2;
+             const uint32_t codepoint1 = utf8_decode(p1, &l1);
+             const uint32_t codepoint2 = utf8_decode(p2, &l2);
+             const uint32_t c1 = (codepoint1 >= 'A' && codepoint1 <= 'Z') ? codepoint1 + 32 : codepoint1;
+             const uint32_t c2 = (codepoint2 >= 'A' && codepoint2 <= 'Z') ? codepoint2 + 32 : codepoint2;
 
              if (c1 != c2) {
                  result.value.is_equ = false;
@@ -304,11 +342,11 @@ string_result_t string_substring(const string_t *haystack, const string_t *needl
 /**
  * string_get_at
  *  @str: a non-null string
- *  @idx: the position of the symbol to read
+ *  @position: the position of the symbol to read
  *
- *  Gets symbol indexed by @idx from @str
+ *  Gets symbol indexed by @position from @str
  *
- *  Returns a string_result_t containing a new string
+ *  Returns a string_result_t containing a the symbol as a C string
  */
 string_result_t string_get_at(const string_t *str, size_t position) {
     string_result_t result = {0};
@@ -329,6 +367,7 @@ string_result_t string_get_at(const string_t *str, size_t position) {
     char *symbol = malloc(char_len + 1);
     if (symbol == NULL) {
         result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
 
         return result;
     }
@@ -342,6 +381,16 @@ string_result_t string_get_at(const string_t *str, size_t position) {
     return result;
 }
 
+/**
+ * string_set_at
+ *  @str: a non-null string
+ *  @position: the position to write into
+ *  @utf8_char: an UTF8 symbol
+ *
+ *  Writes @utf8_char into @str at index @position
+ *
+ *  Returns a string_result_t data type
+ */
 string_result_t string_set_at(string_t *str, size_t position, const char *utf8_char) {
     string_result_t result = {0};
 
@@ -370,6 +419,7 @@ string_result_t string_set_at(string_t *str, size_t position, const char *utf8_c
         char *new_data = malloc(new_total + 1);
         if (new_data == NULL) {
             result.status = STRING_ERR_ALLOCATE;
+            SET_MSG(result, "Cannot allocate memory");
 
             return result;
         }
@@ -387,8 +437,155 @@ string_result_t string_set_at(string_t *str, size_t position, const char *utf8_c
     }
 
     result.status = STRING_OK;
-    result.value.string = str;
     SET_MSG(result, "Character successfully set");
+
+    return result;
+}
+
+/**
+ * string_to_lower
+ *  @str: a non-null string
+ *
+ *  Converts a String to lowercase
+ *
+ *  Returns a string_result_t containing a new string
+ */
+string_result_t string_to_lower(const string_t *str) {
+    string_result_t result = {0};
+
+    if (str == NULL) {
+        result.status = STRING_ERR_INVALID;
+         SET_MSG(result, "Invalid string");
+
+        return result;
+    }
+
+    char *buf = malloc(str->byte_capacity);
+    if (buf == NULL) {
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    const char *src = str->data;
+    char *dst = buf;
+
+    while (*src) {
+        int len;
+        uint32_t codepoint = utf8_decode(src, &len);
+        uint32_t lower = (codepoint >= 'A' && codepoint <= 'Z') ? codepoint + 32 : codepoint;
+        dst += utf8_encode(lower, dst);
+        src += len;
+    }
+    *dst = '\0';
+    result = string_new(buf);
+    free(buf);
+
+    result.status = STRING_OK;
+    SET_MSG(result, "String successfully converted to lowercase");
+
+    return result;
+}
+
+/**
+ * string_to_upper
+ *  @str: a non-null string
+ *
+ *  Converts a String to uppercase
+ *
+ *  Returns a string_result_t containing a new string
+ */
+string_result_t string_to_upper(const string_t *str) {
+    string_result_t result = {0};
+
+    if (str == NULL) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid string");
+
+        return result;
+    }
+
+    char *buf = malloc(str->byte_capacity);
+    if (buf == NULL) {
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    const char *src = str->data;
+    char *dst = buf;
+    while (*src) {
+        int len;
+        uint32_t codepoint = utf8_decode(src, &len);
+        uint32_t upper = (codepoint >= 'a' && codepoint <= 'z') ? codepoint - 32 : codepoint;
+        dst += utf8_encode(upper, dst);
+        src += len;
+    }
+    *dst = '\0';
+    result = string_new(buf);
+    free(buf);
+
+    result.status = STRING_OK;
+    SET_MSG(result, "String successfully converted to uppercase");
+
+    return result;
+}
+
+/**
+ * string_reverse
+ *  @str: a non-null string
+ *
+ *  Reverses @str
+ *
+ *  Returns a new string_result_t containing the reversed string
+ */
+string_result_t string_reverse(const string_t *str) {
+    string_result_t result = {0};
+
+    if (str == NULL) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid string");
+
+        return result;
+    }
+
+    char *buf = malloc(str->byte_capacity);
+    if (buf == NULL) {
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    const char **pos = malloc(str->char_count * sizeof(char *));
+    if (pos == NULL) {
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    const char *ptr = str->data;
+    for (size_t idx = 0; idx < str->char_count; idx++) {
+        pos[idx] = ptr;
+        ptr += utf8_char_len((unsigned char)*ptr);
+    }
+
+    char *dst = buf;
+    for (int64_t idx = (int64_t)str->char_count - 1; idx >= 0; idx--) {
+        int len = utf8_char_len((unsigned char)*pos[idx]);
+        memcpy(dst, pos[idx], len);
+        dst += len;
+    }
+
+    *dst = '\0';
+    free(pos);
+    result = string_new(buf);
+    free(buf);
+
+    SET_MSG(result, "String successfully reversed");
 
     return result;
 }
