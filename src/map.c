@@ -11,10 +11,6 @@
 #include "map.h"
 
 // Internal methods
-static uint64_t hash_key(const char *key);
-static size_t map_insert_index(const map_t *map, const char *key);
-static size_t map_find_index(const map_t *map, const char *key);
-static map_result_t map_resize(map_t *map);
 
 /**
  * hash_key
@@ -22,7 +18,7 @@ static map_result_t map_resize(map_t *map);
  *
  *  Returns the digest of @key using the Fowler-Noll-Vo hashing algorithm
  */
-uint64_t hash_key(const char *key) {
+static uint64_t hash_key(const char *key) {
     uint64_t hash = FNV_OFFSET_BASIS_64;
 
     while (*key) {
@@ -31,43 +27,6 @@ uint64_t hash_key(const char *key) {
     }
 
     return hash;
-}
-
-/**
- * map_new
- *
- * Returns a map_result_t data type containing a new hash map
- */
-map_result_t map_new(void) {
-    map_result_t result = {0};
-
-    map_t *map = malloc(sizeof(map_t));
-    if (map == NULL) {
-        result.status = MAP_ERR_ALLOCATE;
-        SET_MSG(result, "Failed to allocate memory for map");
-
-        return result;
-    }
-
-    map->elements = calloc(INITIAL_CAP, sizeof(map_element_t));
-    if (map->elements == NULL) {
-        free(map);
-        result.status = MAP_ERR_ALLOCATE;
-        SET_MSG(result, "Failed to allocate memory for map elements");
-
-        return result;
-    }
-
-    // Initialize map
-    map->capacity = INITIAL_CAP;
-    map->size = 0;
-    map->tombstone_count = 0;
-
-    result.status = MAP_OK;
-    SET_MSG(result, "Map successfully created");
-    result.value.map = map;
-
-    return result;
 }
 
 /**
@@ -80,7 +39,7 @@ map_result_t map_new(void) {
  *
  *  Returns the index of available slot or SIZE_MAX otherwise
  */
-size_t map_insert_index(const map_t *map, const char *key) {
+static size_t map_insert_index(const map_t *map, const char *key) {
     const uint64_t key_digest = hash_key(key);
     size_t idx = key_digest % map->capacity;
     size_t delete_tracker = map->capacity; // Fallback index
@@ -113,7 +72,7 @@ size_t map_insert_index(const map_t *map, const char *key) {
  *
  * Returns a a map_result_t data type containing the status
  */
-map_result_t map_resize(map_t *map) {
+static map_result_t map_resize(map_t *map) {
     map_result_t result = {0};
 
     const size_t old_capacity = map->capacity;
@@ -170,6 +129,43 @@ map_result_t map_resize(map_t *map) {
 
     result.status = MAP_OK;
     SET_MSG(result, "Map successfully resized");
+
+    return result;
+}
+
+/**
+ * map_new
+ *
+ * Returns a map_result_t data type containing a new hash map
+ */
+map_result_t map_new(void) {
+    map_result_t result = {0};
+
+    map_t *map = malloc(sizeof(map_t));
+    if (map == NULL) {
+        result.status = MAP_ERR_ALLOCATE;
+        SET_MSG(result, "Failed to allocate memory for map");
+
+        return result;
+    }
+
+    map->elements = calloc(INITIAL_CAP, sizeof(map_element_t));
+    if (map->elements == NULL) {
+        free(map);
+        result.status = MAP_ERR_ALLOCATE;
+        SET_MSG(result, "Failed to allocate memory for map elements");
+
+        return result;
+    }
+
+    // Initialize map
+    map->capacity = INITIAL_CAP;
+    map->size = 0;
+    map->tombstone_count = 0;
+
+    result.status = MAP_OK;
+    SET_MSG(result, "Map successfully created");
+    result.value.map = map;
 
     return result;
 }

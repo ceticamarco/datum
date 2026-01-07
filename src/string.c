@@ -1,4 +1,3 @@
-#include <stdint.h>
 #define SET_MSG(result, msg) \
     do { \
         snprintf((char *)(result).message, RESULT_MSG_SIZE, "%s", (const char *)msg); \
@@ -6,6 +5,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "string.h"

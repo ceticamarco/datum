@@ -10,10 +10,112 @@
 #include "vector.h"
 
 // Internal methods
-static vector_result_t vector_resize(vector_t *vector);
-static void swap(void *x, void *y, size_t size);
-static size_t partition(void *base, size_t low, size_t high, size_t size, vector_cmp_fn cmp);
-static void quicksort(void *base, size_t low, size_t high, size_t size, vector_cmp_fn cmp);
+/**
+ * vector_resize
+ *  @vector: a non-null vector
+ *
+ *  Increases the size of @vector
+ *
+ *  Returns a vector_result_t data type containing the status
+ */
+static vector_result_t vector_resize(vector_t *vector) {
+    vector_result_t result = {0};
+
+    const size_t old_capacity = vector->capacity;
+    const size_t new_capacity = old_capacity > 0 ? old_capacity * 2 : 1;
+
+    // Check for stack overflow errors
+    if (new_capacity > SIZE_MAX / vector->data_size) {
+        result.status = VECTOR_ERR_OVERFLOW;
+        SET_MSG(result, "Exceeded maximum size while resizing vector");
+
+        return result;
+    }
+
+    void *new_elements = realloc(vector->elements, new_capacity * vector->data_size);
+    if (new_elements == NULL) {
+        result.status = VECTOR_ERR_ALLOCATE;
+        SET_MSG(result, "Failed to reallocate memory for vector");
+
+        return result;
+    }
+
+    vector->elements = new_elements;
+    vector->capacity = new_capacity;
+
+    result.status = VECTOR_OK;
+    SET_MSG(result, "Vector successfully resized");
+
+    return result;
+}
+
+/**
+ * swap
+ *  @x: first element
+ *  @y: second element
+ * 
+ *  Swaps @x and @y
+ */
+static void swap(void *x, void *y, size_t size) {
+    uint8_t temp[size];
+
+    memcpy(temp, x, size);
+    memcpy(x, y, size);
+    memcpy(y, temp, size);
+}
+
+/**
+ * partition
+ *  @base: the array/partition
+ *  @low: lower index
+ *  @high: higher index
+ *  @size: data size
+ *  @cmp: comparison function
+ * 
+ *  Divides an array into two partitions
+ * 
+ *  Returns the pivot index
+ */
+static size_t partition(void *base, size_t low, size_t high, size_t size, vector_cmp_fn cmp) {
+    uint8_t *arr = (uint8_t*)base;
+    void *pivot = arr + (high * size);
+    size_t i = low;
+
+    for (size_t j = low; j < high; j++) {
+        vector_order_t order = cmp(arr + (j * size), pivot);
+
+        if (order == VECTOR_ORDER_LT || order == VECTOR_ORDER_EQ) {
+            swap(arr + (i * size), arr + (j * size), size);
+            i++;
+        }
+    }
+
+    swap(arr + (i * size), arr + (high * size), size);
+
+    return i;
+}
+
+/**
+ * quicksort
+ *  @base: the base array/partition
+ *  @low: lower index
+ *  @high: higher index
+ *  @size: data size
+ *  @cmp: comparision function
+ * 
+ *  Recursively sorts an array/partition using the Quicksort algorithm
+ */
+static void quicksort(void *base, size_t low, size_t high, size_t size, vector_cmp_fn cmp) {
+    if (low < high) {
+        const size_t pivot = partition(base, low, high, size, cmp);
+
+        if (pivot > 0) {
+            quicksort(base, low, pivot - 1, size, cmp);
+        }
+        quicksort(base, pivot + 1, high, size, cmp);
+    }
+}
+
 
 /**
  * vector_new
@@ -59,112 +161,6 @@ vector_result_t vector_new(size_t size, size_t data_size) {
     result.value.vector = vector;
 
     return result;
-}
-
-/**
- * vector_resize
- *  @vector: a non-null vector
- *
- *  Increases the size of @vector
- *
- *  Returns a vector_result_t data type containing the status
- */
-vector_result_t vector_resize(vector_t *vector) {
-    vector_result_t result = {0};
-
-    const size_t old_capacity = vector->capacity;
-    const size_t new_capacity = old_capacity > 0 ? old_capacity * 2 : 1;
-
-    // Check for stack overflow errors
-    if (new_capacity > SIZE_MAX / vector->data_size) {
-        result.status = VECTOR_ERR_OVERFLOW;
-        SET_MSG(result, "Exceeded maximum size while resizing vector");
-
-        return result;
-    }
-
-    void *new_elements = realloc(vector->elements, new_capacity * vector->data_size);
-    if (new_elements == NULL) {
-        result.status = VECTOR_ERR_ALLOCATE;
-        SET_MSG(result, "Failed to reallocate memory for vector");
-
-        return result;
-    }
-
-    vector->elements = new_elements;
-    vector->capacity = new_capacity;
-
-    result.status = VECTOR_OK;
-    SET_MSG(result, "Vector successfully resized");
-
-    return result;
-}
-
-/**
- * swap
- *  @x: first element
- *  @y: second element
- * 
- *  Swaps @x and @y
- */
-void swap(void *x, void *y, size_t size) {
-    uint8_t temp[size];
-
-    memcpy(temp, x, size);
-    memcpy(x, y, size);
-    memcpy(y, temp, size);
-}
-
-/**
- * partition
- *  @base: the array/partition
- *  @low: lower index
- *  @high: higher index
- *  @size: data size
- *  @cmp: comparison function
- * 
- *  Divides an array into two partitions
- * 
- *  Returns the pivot index
- */
-size_t partition(void *base, size_t low, size_t high, size_t size, vector_cmp_fn cmp) {
-    uint8_t *arr = (uint8_t*)base;
-    void *pivot = arr + (high * size);
-    size_t i = low;
-
-    for (size_t j = low; j < high; j++) {
-        vector_order_t order = cmp(arr + (j * size), pivot);
-
-        if (order == VECTOR_ORDER_LT || order == VECTOR_ORDER_EQ) {
-            swap(arr + (i * size), arr + (j * size), size);
-            i++;
-        }
-    }
-
-    swap(arr + (i * size), arr + (high * size), size);
-
-    return i;
-}
-
-/**
- * quicksort
- *  @base: the base array/partition
- *  @low: lower index
- *  @high: higher index
- *  @size: data size
- *  @cmp: comparision function
- * 
- *  Recursively sorts an array/partition using the Quicksort algorithm
- */
-void quicksort(void *base, size_t low, size_t high, size_t size, vector_cmp_fn cmp) {
-    if (low < high) {
-        const size_t pivot = partition(base, low, high, size, cmp);
-
-        if (pivot > 0) {
-            quicksort(base, low, pivot - 1, size, cmp);
-        }
-        quicksort(base, pivot + 1, high, size, cmp);
-    }
 }
 
 /**
