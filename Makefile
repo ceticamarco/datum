@@ -19,7 +19,7 @@ TEST_M_TARGET = test_map
 TEST_B_TARGET = test_bigint
 BENCH_TARGET = benchmark_datum
 
-LIB_OBJS = $(OBJ_DIR)/vector.o $(OBJ_DIR)/map.o $(OBJ_DIR)/bigint.o
+LIB_OBJS = $(OBJ_DIR)/vector.o $(OBJ_DIR)/map.o $(OBJ_DIR)/bigint.o $(OBJ_DIR)/string.o
 PROG_OBJS = $(OBJ_DIR)/usage.o
 
 .PHONY: all clean

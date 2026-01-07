@@ -18,7 +18,7 @@ typedef enum {
 typedef struct {
     char *data;
     size_t byte_size; // Size in bytes excluding NULL terminator
-    size_t byte_capacity; // total allocated memory
+    size_t byte_capacity; // Total allocated memory
     size_t char_count; // Number of symbols
 } string_t;
 
@@ -37,13 +37,17 @@ typedef struct {
     } value;
 } string_result_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Public APIs
 string_result_t string_new(const char *c_str);
 string_result_t string_concat(const string_t *x, const string_t *y);
 string_result_t string_substring(const string_t *haystack, const string_t *needle);
 string_result_t string_eq(const string_t *x, const string_t *y, bool case_sensitive);
-string_result_t string_get_at(const string_t *str, size_t idx);
-string_result_t string_set_at(string_t *str, size_t idx);
+string_result_t string_get_at(const string_t *str, size_t position);
+string_result_t string_set_at(string_t *str, size_t position, const char *utf8_char);
 string_result_t string_to_lower(const string_t *str);
 string_result_t string_to_upper(const string_t *str);
 string_result_t string_reverse(const string_t *str);
@@ -51,5 +55,14 @@ string_result_t string_trim(const string_t *str);
 string_result_t string_split(const string_t *str, const char *delim);
 string_result_t string_destroy(string_t *str);
 string_result_t string_split_destroy(string_t **split, size_t counT);
+
+// Inline methods
+static inline size_t string_len(const string_t *str) {
+    return str ? str->char_count : 0;
+}
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
