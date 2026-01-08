@@ -22,7 +22,7 @@ static inline int utf8_char_len(unsigned char byte) {
     if ((byte & 0x80) == 0x00) return 1;
     if ((byte & 0xE0) == 0xC0) return 2;
     if ((byte & 0xF0) == 0xE0) return 3;
-    if ((byte & 0xF0) == 0xE0) return 4;
+    if ((byte & 0xF8) == 0xF0) return 4;
 
     return -1;
 }
@@ -59,7 +59,7 @@ static bool utf8_is_char_valid(const char *utf8_char, int *out_len) {
 static bool utf8_scan(const char *str, size_t *out_byte_size, size_t *out_char_count) {
     size_t b_size = 0;
     size_t c_count = 0;
-    const unsigned char *p = (const unsigned char*)str;
+    const unsigned char *p = (const unsigned char *)str;
 
     while (p[b_size] != '\0') {
         size_t len = utf8_char_len(p[b_size]);
@@ -285,7 +285,7 @@ string_result_t string_concat(const string_t *x, const string_t *y) {
         return result;
     }
 
-    memcpy(buf, x->data, y->byte_size);
+    memcpy(buf, x->data, x->byte_size);
     memcpy(buf + x->byte_size, y->data, y->byte_size);
     buf[new_size] = '\0';
     result = string_new(buf);
@@ -400,7 +400,7 @@ string_result_t string_substring(const string_t *haystack, const string_t *needl
  *
  *  Gets symbol indexed by @position from @str
  *
- *  Returns a string_result_t containing a the symbol as a C string
+ *  Returns a string_result_t containing the symbol as a C string
  */
 string_result_t string_get_at(const string_t *str, size_t position) {
     string_result_t result = {0};
@@ -418,17 +418,18 @@ string_result_t string_get_at(const string_t *str, size_t position) {
     }
 
     int char_len = utf8_char_len((unsigned char)*ptr);
-    char *symbol = malloc(char_len + 1);
-    if (symbol == NULL) {
+    char *utf8_char = malloc(char_len + 1);
+    if (utf8_char == NULL) {
         result.status = STRING_ERR_ALLOCATE;
         SET_MSG(result, "Cannot allocate memory");
 
         return result;
     }
 
-    memcpy(symbol, ptr, char_len);
-    symbol[char_len] = '\0';
+    memcpy(utf8_char, ptr, char_len);
+    utf8_char[char_len] = '\0';
 
+    result.value.symbol = utf8_char;
     result.status = STRING_OK;
     SET_MSG(result, "Symbol successfully retrieved");
 

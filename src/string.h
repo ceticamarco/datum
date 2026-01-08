@@ -27,7 +27,7 @@ typedef struct {
     uint8_t message[RESULT_MSG_SIZE];
     union {
         string_t *string; // For new, reverse, trim
-        char *c_str; // For get_at
+        char *symbol; // For get_at
         int64_t idx; // For substring search
         bool is_equ; // For comparison
         struct { // For split

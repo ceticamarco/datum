@@ -25,10 +25,12 @@
 #include "src/vector.h"
 #include "src/map.h"
 #include "src/bigint.h"
+#include "src/string.h"
 
 static int vector_usage(void);
 static int map_usage(void);
 static int bigint_usage(void);
+static int string_usage(void);
 
 static vector_order_t cmp_int_asc(const void *x, const void *y);
 static vector_order_t cmp_int_desc(const void *x, const void *y);
@@ -50,6 +52,11 @@ int main(void) {
     SEP(50);
 
     st = bigint_usage();
+    if (st) { return st; }
+
+    SEP(50);
+
+    st = string_usage();
     if (st) { return st; }
 
     return 0;
@@ -521,6 +528,97 @@ int bigint_usage(void) {
     bigint_destroy(sum); bigint_destroy(diff); 
     bigint_destroy(prod); bigint_destroy(quotient); bigint_destroy(remainder);
     free(large_x); free(large_y);
+
+    return 0;
+}
+
+int string_usage(void) {
+    // Create a new string
+    string_result_t res = string_new("Hello, ");
+    if (res.status != STRING_OK) {
+        printf("Error: %s\n", res.message);
+
+        return 1;
+    }
+
+    string_t *str1 = res.value.string;
+    printf("Created string: \"%s\"\n", str1->data);
+    printf("Character count: %zu (%zu actual bytes)\n\n", string_len(str1), str1->byte_size);
+
+    // Concatenation of strings
+    string_result_t res_suffix = string_new("World! 🦜");
+    if (res_suffix.status != STRING_OK) {
+        printf("Error: %s\n", res.message);
+
+        return 1;
+    }
+
+    string_t *suffix = res_suffix.value.string;
+    printf("Created another string: \"%s\"\n", suffix->data);
+    printf("Character count: %zu (%zu actual bytes)\n\n", string_len(suffix), suffix->byte_size);
+
+    string_result_t res_cat = string_concat(str1, suffix);
+    if (res_cat.status != STRING_OK) {
+        printf("Error: %s\n", res_cat.message);
+
+        return 1;
+    }
+    string_destroy(suffix);
+   
+    string_t *concat_str = res_cat.value.string;
+    printf("Concatenation result: \"%s\"\n\n", concat_str->data);
+
+    // Uppercase string
+    string_result_t res_upper = string_to_upper(concat_str);
+    if (res_upper.status != STRING_OK) {
+        printf("Error: %s\n", res_upper.message);
+
+        return 1;
+    }
+    printf("Uppercase: \"%s\"\n", res_upper.value.string->data);
+    string_destroy(res_upper.value.string);
+
+    // Lowercase string
+    string_result_t res_lower = string_to_lower(concat_str);
+    if (res_lower.status != STRING_OK) {
+        printf("Error: %s\n", res_lower.message);
+
+        return 1;
+    }
+    printf("Lowercase: \"%s\"\n\n", res_lower.value.string->data);
+    string_destroy(res_lower.value.string);
+
+    // Reverse string
+    string_result_t res_rev = string_reverse(concat_str);
+    if (res_rev.status != STRING_OK) {
+        printf("Error: %s\n", res_rev.message);
+
+        return 1;
+    }
+    printf("Reversed: \"%s\"\n\n", res_rev.value.string->data);
+    string_destroy(res_rev.value.string);
+
+    // Change first character of the string
+    string_result_t res_set = string_set_at(concat_str, 0, "J");
+    if (res_set.status != STRING_OK) {
+        printf("Error: %s\n", res_set.message);
+
+        return 1;
+    }
+    printf("Updated string: \"%s\"\n\n", concat_str->data);
+
+    // Get character from string (the emoji)
+    string_result_t res_get = string_get_at(concat_str, 14);
+    if (res_get.status != STRING_OK) {
+        printf("Error: %s\n", res_get.message);
+
+        return 1;
+    }
+    printf("Extracted symbol: \"%s\"\n", res_get.value.symbol);
+    free(res_get.value.symbol);
+
+    string_destroy(concat_str);
+    string_destroy(str1);
 
     return 0;
 }
