@@ -43,6 +43,7 @@ extern "C" {
 
 // Public APIs
 string_result_t string_new(const char *c_str);
+string_result_t string_clone(const string_t *str);
 string_result_t string_concat(const string_t *x, const string_t *y);
 string_result_t string_substring(const string_t *haystack, const string_t *needle);
 string_result_t string_eq(const string_t *x, const string_t *y, bool case_sensitive);
@@ -54,7 +55,7 @@ string_result_t string_reverse(const string_t *str);
 string_result_t string_trim(const string_t *str);
 string_result_t string_split(const string_t *str, const char *delim);
 string_result_t string_destroy(string_t *str);
-string_result_t string_split_destroy(string_t **split, size_t counT);
+string_result_t string_split_destroy(string_t **split, size_t count);
 
 // Inline methods
 static inline size_t string_len(const string_t *str) {

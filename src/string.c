@@ -10,6 +10,13 @@
 
 #include "string.h"
 
+// Check if a character is a space
+static inline bool is_space(unsigned char c) {
+    return (c == ' ' || c == '\t' ||
+            c == '\n' || c == '\r' ||
+            c == '\f' || c == '\v');
+}
+
 // Get byte length of a UTF-8 character/symbol
 static inline int utf8_char_len(unsigned char byte) {
     if ((byte & 0x80) == 0x00) return 1;
@@ -170,7 +177,7 @@ string_result_t string_new(const char *c_str) {
     string_t *str = malloc(sizeof(string_t));
     if (str == NULL) {
         result.status = STRING_ERR_ALLOCATE;
-        SET_MSG(result, "Failed to allocate string");
+        SET_MSG(result, "Cannot allocate memory");
 
         return result;
     }
@@ -179,7 +186,7 @@ string_result_t string_new(const char *c_str) {
     if (str->data == NULL) {
         free(str);
         result.status = STRING_ERR_ALLOCATE;
-        SET_MSG(result, "Failed to allocate string");
+        SET_MSG(result, "Cannot allocate memory");
 
         return result;
     }
@@ -192,6 +199,53 @@ string_result_t string_new(const char *c_str) {
     result.status = STRING_OK;
     SET_MSG(result, "String successfully created");
     result.value.string = str;
+
+    return result;
+}
+
+/**
+ * string_clone
+ *  @str: a non-null string
+ *
+ *  Deep copies @str
+ *
+ *  Returns a string_result_t containing the copied string
+ */
+string_result_t string_clone(const string_t *str) {
+    string_result_t result = {0};
+
+    if (str == NULL) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid string");
+
+        return result;
+    }
+
+    string_t *str_copy = malloc(sizeof(string_t));
+    if (str_copy == NULL) {
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    str_copy->data = malloc(str->byte_size + 1);
+    if (str_copy->data == NULL) {
+        free(str_copy);
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    memcpy(str_copy->data, str->data, str->byte_size + 1);
+    str_copy->byte_size = str->byte_size + 1;
+    str_copy->byte_capacity = str->byte_size + 1;
+    str_copy->char_count = str->char_count;
+
+    result.status = STRING_OK;
+    result.value.string = str_copy;
+    SET_MSG(result, "String successfully copied");
 
     return result;
 }
@@ -226,7 +280,7 @@ string_result_t string_concat(const string_t *x, const string_t *y) {
     char *buf = malloc(new_size + 1);
     if (buf == NULL) {
         result.status = STRING_ERR_ALLOCATE;
-        SET_MSG(result, "failed to allocate memory");
+        SET_MSG(result, "Cannot allocate memory");
 
         return result;
     }
@@ -586,6 +640,197 @@ string_result_t string_reverse(const string_t *str) {
     free(buf);
 
     SET_MSG(result, "String successfully reversed");
+
+    return result;
+}
+
+/**
+ * string_trim
+ *  @str: a non-null string
+ *
+ *  Trims whitespace from @str
+ *
+ *  Returns a string_result_t containing the trimmed string
+ */
+string_result_t string_trim(const string_t *str) {
+    string_result_t result = {0};
+
+    if (str == NULL) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid string");
+
+        return result;
+    }
+
+    const char *start = str->data;
+    while (*start && is_space((unsigned char)*start)) {
+        start++;
+    }
+
+    if (*start == '\0') {
+        return string_new("");
+    }
+
+    const char *end = str->data + str->byte_size - 1;
+    while (end > start && is_space((unsigned char)*end)) {
+        end--;
+    }
+
+    const size_t len = (end - start) + 1;
+    char *trimmed = malloc(len + 1);
+    if (trimmed == NULL) {
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    memcpy(trimmed, start, len);
+    trimmed[len] = '\0';
+    result = string_new(trimmed);
+    free(trimmed);
+
+    result.status = STRING_OK;
+    SET_MSG(result, "String successfully trimmed");
+
+    return result;
+}
+
+/**
+ * string_split
+ *  @str: a non-null string
+ *  @delim: delimiter string
+ *
+ *  Splits @str by @delim
+ *
+ *  Returns a string_result_t containing an array of String pointers
+ */
+string_result_t string_split(const string_t *str, const char *delim) {
+    string_result_t result = {0};
+    string_result_t tmp_res = {0};
+
+    if (str == NULL || delim == NULL || delim[0] == '\0') {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid strings");
+
+        return result;
+    }
+
+    const char *ptr = str->data;
+    const size_t delim_len = strlen(delim);
+    size_t count = 1;
+
+    while ((ptr = strstr(ptr, delim))) {
+        count++;
+        ptr += delim_len;
+    }
+
+    string_t **string_array = malloc(count * sizeof(string_t *));
+    if (string_array == NULL) {
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    const char *start = str->data;
+    size_t idx = 0;
+
+    while ((ptr = strstr(start, delim))) {
+        const size_t part_len = ptr - start;
+        char *tmp = malloc(part_len + 1);
+        if (tmp == NULL) {
+            result.status = STRING_ERR_ALLOCATE;
+            SET_MSG(result, "Cannot allocated memory");
+
+            goto cleanup;
+        }
+
+        memcpy(tmp, start, part_len);
+        tmp[part_len] = '\0';
+
+        tmp_res = string_new(tmp);
+        free(tmp);
+        if (tmp_res.status != STRING_OK) { result = tmp_res; goto cleanup; }
+        
+        string_array[idx++] = tmp_res.value.string;
+        start = ptr + delim_len;
+    }
+
+    tmp_res = string_new(start);
+    if (tmp_res.status != STRING_OK) { result = tmp_res; goto cleanup; }
+
+    string_array[idx] = tmp_res.value.string;
+
+    result.status = STRING_OK;
+    result.value.split.strings = string_array;
+    result.value.split.count = count;
+    SET_MSG(result, "String successfully split");
+
+    return result;
+cleanup:
+    for (size_t j = 0; j < idx; j++) {
+        string_destroy(string_array[j]);
+    }
+    free(string_array);
+
+    return result;
+}
+
+/**
+ * string_destroy
+ *  @str: a non-null string
+ *
+ *  Destroys @str
+ *
+ *  Returns a string_result_t data type
+ */
+string_result_t string_destroy(string_t *str) {
+    string_result_t result = {0};
+
+    if (str == NULL) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid string");
+
+        return result;
+    }
+
+    free(str->data);
+    free(str);
+
+    result.status = STRING_OK;
+    SET_MSG(result, "String successfully deleted");
+
+    return result;
+}
+
+/**
+ * string_split_destory
+ *  @split: an array of pointers of String
+ *  @count: the number of elements
+ *
+ *  Destroys the @split array of Strings
+ *
+ *  Returns a string_result_t data type
+ */
+string_result_t string_split_destroy(string_t **split, size_t count) {
+    string_result_t result = {0};
+
+    if (split == NULL) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid string");
+
+        return result;
+    }
+
+    for (size_t idx = 0; idx < count; idx++) {
+        string_destroy(split[idx]);
+    }
+
+    free(split);
+
+    result.status = STRING_OK;
+    SET_MSG(result, "Array of strings successfully deleted");
 
     return result;
 }
