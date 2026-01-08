@@ -451,9 +451,16 @@ string_result_t string_set_at(string_t *str, size_t position, const char *utf8_c
 
     int new_len;
 
-    if (str == NULL || position >= str->char_count || utf8_is_char_valid(utf8_char, &new_len) == 0) {
+    if (str == NULL || utf8_is_char_valid(utf8_char, &new_len) == 0) {
         result.status = STRING_ERR_INVALID;
         SET_MSG(result, "Invalid index or character");
+
+        return result;
+    }
+
+    if (position >= str->char_count) {
+        result.status = STRING_ERR_OVERFLOW;
+        SET_MSG(result, "Index out of bounds");
 
         return result;
     }
