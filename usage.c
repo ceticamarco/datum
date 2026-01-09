@@ -543,7 +543,18 @@ int string_usage(void) {
 
     string_t *str1 = res.value.string;
     printf("Created string: \"%s\"\n", str1->data);
-    printf("Character count: %zu (%zu actual bytes)\n\n", string_len(str1), str1->byte_size);
+    printf("Character count: %zu (%zu actual bytes)\n", string_len(str1), str1->byte_size);
+
+    string_result_t res_clone = string_clone(str1);
+    if (res_clone.status != STRING_OK) {
+        printf("Error: %s\n", res.message);
+
+        return 1;
+    }
+
+    string_t *cloned = res_clone.value.string;
+    printf("Cloned string: \"%s\"\n\n", cloned->data);
+    string_destroy(cloned);
 
     // Concatenation of strings
     string_result_t res_suffix = string_new("World! 🦜");
@@ -568,6 +579,46 @@ int string_usage(void) {
     string_t *concat_str = res_cat.value.string;
     printf("Concatenation result: \"%s\"\n\n", concat_str->data);
 
+    // String contains
+    string_t *haystack = string_new("The quick brown fox jumps over the lazy dog.").value.string;
+    string_t *needle = string_new("brown fox").value.string;
+
+    string_result_t res_contains = string_contains(haystack, needle);
+    if (res_contains.status != STRING_OK) {
+        printf("Error: %s\n", res_contains.message);
+
+        return 1;
+    }
+
+    if (res_contains.value.idx != -1) {
+        printf("Substring found. Starting at index %zu\n\n", res_contains.value.idx);
+    }
+
+    string_destroy(haystack);
+    string_destroy(needle);
+
+    // String slicing
+    string_result_t res_slice = string_slice(concat_str, 7, 14);
+    if (res_slice.status != STRING_OK) {
+        printf("Error: %s\n", res_slice.message);
+
+        return 1;
+    }
+
+    printf("Slice of string: \"%s\"\n\n", res_slice.value.string->data);
+    string_destroy(res_slice.value.string);
+
+    // String equality
+    string_t *compare = string_new("hello, World! 🦜").value.string;
+    string_result_t res_eq = string_eq(concat_str, compare, true);
+    if (res_eq.value.is_equ) {
+        printf("The two strings are equal\n\n");
+    } else {
+        printf("The two strings are not equal\n\n");
+    }
+
+    string_destroy(compare);
+    
     // Uppercase string
     string_result_t res_upper = string_to_upper(concat_str);
     if (res_upper.status != STRING_OK) {
@@ -616,6 +667,41 @@ int string_usage(void) {
     }
     printf("Extracted symbol: \"%s\"\n", res_get.value.symbol);
     free(res_get.value.symbol);
+
+    // Trim string
+    string_t *to_trim = string_new("    foo    ").value.string;
+    string_result_t res_trim = string_trim(to_trim);
+    if (res_trim.status != STRING_OK) {
+        printf("Error: %s\n", res_trim.message);
+
+        return 1;
+    }
+
+    printf("Trimmed string: \"%s\"\n\n", res_trim.value.string->data);
+    string_destroy(to_trim);
+    string_destroy(res_trim.value.string);
+
+    // Split string
+    string_t *to_split = string_new("foo/bar/biz").value.string;
+    string_result_t res_split = string_split(to_split, "/");
+    if (res_split.status != STRING_OK) {
+        printf("Error: %s\n", res_split.message);
+
+        return 1;
+    }
+
+    const size_t count = res_split.value.split.count;
+    string_t **strings = res_split.value.split.strings;
+
+    printf("Original string: \"%s\"\nSplitted string: ", to_split->data);
+    for (size_t idx = 0; idx < count; idx++) {
+        printf("\"%s\" ", strings[idx]->data);
+    }
+
+    printf("\n");
+
+    string_split_destroy(strings, count);
+    string_destroy(to_split);
 
     string_destroy(concat_str);
     string_destroy(str1);

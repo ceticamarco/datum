@@ -26,9 +26,9 @@ typedef struct {
     string_status_t status;
     uint8_t message[RESULT_MSG_SIZE];
     union {
-        string_t *string; // For new, reverse, trim
+        string_t *string; // For new, clone, slice, reverse, trim
         char *symbol; // For get_at
-        int64_t idx; // For substring search
+        int64_t idx; // For contains
         bool is_equ; // For comparison
         struct { // For split
             string_t **strings;
@@ -45,7 +45,8 @@ extern "C" {
 string_result_t string_new(const char *c_str);
 string_result_t string_clone(const string_t *str);
 string_result_t string_concat(const string_t *x, const string_t *y);
-string_result_t string_substring(const string_t *haystack, const string_t *needle);
+string_result_t string_contains(const string_t *haystack, const string_t *needle);
+string_result_t string_slice(const string_t *str, size_t start, size_t end);
 string_result_t string_eq(const string_t *x, const string_t *y, bool case_sensitive);
 string_result_t string_get_at(const string_t *str, size_t position);
 string_result_t string_set_at(string_t *str, size_t position, const char *utf8_char);

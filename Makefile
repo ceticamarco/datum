@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -Werror -pedantic-errors -fstack-protector-strong \
 	-fsanitize=address -fsanitize=undefined -fstack-clash-protection \
-	-fdiagnostics-color=always -Wwrite-strings -g -std=c99
+	 -Wwrite-strings -g -std=c99
 
 BENCH_FLAGS = -Wall -Wextra -Werror -O3
 

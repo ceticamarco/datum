@@ -239,7 +239,7 @@ string_result_t string_clone(const string_t *str) {
     }
 
     memcpy(str_copy->data, str->data, str->byte_size + 1);
-    str_copy->byte_size = str->byte_size + 1;
+    str_copy->byte_size = str->byte_size;
     str_copy->byte_capacity = str->byte_size + 1;
     str_copy->char_count = str->char_count;
 
@@ -295,7 +295,7 @@ string_result_t string_concat(const string_t *x, const string_t *y) {
 }
 
 /**
- * string_substring
+ * string_contains
  * @haystack: a non-null string
  * @needle: a non-null string
  *
@@ -304,7 +304,7 @@ string_result_t string_concat(const string_t *x, const string_t *y) {
  * Returns a string_result_t containing the index to the beginning of the located string
  * (if the substring has been found)
  */
-string_result_t string_substring(const string_t *haystack, const string_t *needle) {
+string_result_t string_contains(const string_t *haystack, const string_t *needle) {
     string_result_t result = {
         .status = STRING_OK,
         .value.idx = -1
@@ -331,6 +331,75 @@ string_result_t string_substring(const string_t *haystack, const string_t *needl
     } else {
         SET_MSG(result, "Substring not found");
     }
+
+    return result;
+}
+
+/**
+ * string_slice
+ *  @str: a non-null string
+ *  @start: the lower bound (inclusive)
+ *  @end: the upper bound (inclusive)
+ *
+ *  Extracts a slice from @str between @start and @end (inclusive)
+ *
+ *  Returns a string_result_t data type containing the slice
+ */
+string_result_t string_slice(const string_t *str, size_t start, size_t end) {
+    string_result_t result = {0};
+
+    if (str == NULL) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid string");
+
+        return result;
+    }
+
+    if (start > end || end >= str->char_count) {
+        result.status = STRING_ERR_OVERFLOW;
+        SET_MSG(result, "Index out of bounds");
+
+        return result;
+    }
+
+    size_t start_byte_offset = 0;
+    for (size_t idx = 0; idx < start; idx++) {
+        start_byte_offset += utf8_char_len((unsigned char)str->data[start_byte_offset]);
+    }
+
+    size_t end_byte_offset = start_byte_offset;
+    for (size_t idx = start; idx <= end; idx++) {
+        end_byte_offset += utf8_char_len((unsigned char)str->data[end_byte_offset]);
+    }
+
+    const size_t slice_byte_size = end_byte_offset - start_byte_offset;
+
+    string_t *slice = malloc(sizeof(string_t));
+    if (slice == NULL) {
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    slice->data = malloc(slice_byte_size + 1);
+    if (slice->data == NULL) {
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    memcpy(slice->data, str->data + start_byte_offset, slice_byte_size);
+    slice->data[slice_byte_size] = '\0';
+
+    slice->byte_size = slice_byte_size;
+    slice->byte_capacity = slice_byte_size + 1;
+    slice->char_count = end - start + 1;
+
+    result.status = STRING_OK;
+    result.value.string = slice;
+    SET_MSG(result, "String sliced successfully");
 
     return result;
 }
@@ -405,7 +474,14 @@ string_result_t string_substring(const string_t *haystack, const string_t *needl
 string_result_t string_get_at(const string_t *str, size_t position) {
     string_result_t result = {0};
 
-    if (str == NULL || position >= str->char_count) {
+    if (str == NULL) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid string");
+
+        return result;
+    }
+    
+    if (position >= str->char_count) {
         result.status = STRING_ERR_OVERFLOW;
         SET_MSG(result, "Index out of bounds");
 
