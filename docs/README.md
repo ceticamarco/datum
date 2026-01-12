@@ -7,4 +7,5 @@ At the time being, this documentation includes the following pages:
 
 - [vector.md](vector.md): vector documentation;  
 - [map.md](map.md): map documentation;   
-- [bigint.md](bigint.md): bigint documentation.
+- [bigint.md](bigint.md): bigint documentation;  
+- [string.md](string.md): string documentation.  

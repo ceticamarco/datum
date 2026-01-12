@@ -49,7 +49,7 @@ string_result_t string_contains(const string_t *haystack, const string_t *needle
 string_result_t string_slice(const string_t *str, size_t start, size_t end);
 string_result_t string_eq(const string_t *x, const string_t *y, bool case_sensitive);
 string_result_t string_get_at(const string_t *str, size_t position);
-string_result_t string_set_at(string_t *str, size_t position, const char *utf8_char);
+string_result_t string_set_at(const string_t *str, size_t position, const char *utf8_char);
 string_result_t string_to_lower(const string_t *str);
 string_result_t string_to_upper(const string_t *str);
 string_result_t string_reverse(const string_t *str);
@@ -59,7 +59,7 @@ string_result_t string_destroy(string_t *str);
 string_result_t string_split_destroy(string_t **split, size_t count);
 
 // Inline methods
-static inline size_t string_len(const string_t *str) {
+static inline size_t string_size(const string_t *str) {
     return str ? str->char_count : 0;
 }
 

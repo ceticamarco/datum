@@ -40,7 +40,7 @@ $(TEST_M_TARGET): $(OBJ_DIR)/test_map.o $(OBJ_DIR)/map.o
 $(TEST_B_TARGET): $(OBJ_DIR)/test_bigint.o $(OBJ_DIR)/bigint.o $(OBJ_DIR)/vector.o
 	$(CC) $(CFLAGS) -o $@ $^
 
-$(TEST_S_TARGET): $(OBJ_DIR)/test_string.o $(OBJ_DIR)/string.o $(OBJ_DIR)/vector.o
+$(TEST_S_TARGET): $(OBJ_DIR)/test_string.o $(OBJ_DIR)/string.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)

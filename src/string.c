@@ -522,14 +522,20 @@ string_result_t string_get_at(const string_t *str, size_t position) {
  *
  *  Returns a string_result_t data type
  */
-string_result_t string_set_at(string_t *str, size_t position, const char *utf8_char) {
+string_result_t string_set_at(const string_t *str, size_t position, const char *utf8_char) {
     string_result_t result = {0};
 
-    int new_len;
-
-    if (str == NULL || utf8_is_char_valid(utf8_char, &new_len) == 0) {
+    if (str == NULL) {
         result.status = STRING_ERR_INVALID;
-        SET_MSG(result, "Invalid index or character");
+        SET_MSG(result, "Invalid string");
+
+        return result;
+    }
+
+    int new_char_bytes;
+    if (utf8_is_char_valid(utf8_char, &new_char_bytes) == 0) {
+        result.status = STRING_ERR_INVALID_UTF8;
+        SET_MSG(result, "Invalid UTF-8 character");
 
         return result;
     }
@@ -541,41 +547,49 @@ string_result_t string_set_at(string_t *str, size_t position, const char *utf8_c
         return result;
     }
 
-    char *pos = str->data;
+    // Locate the byte offset of the character to replace
+    const char *pos = str->data;
     for (size_t idx = 0; idx < position; idx++) {
         pos += utf8_char_len((unsigned char)*pos);
     }
 
-    int old_len = utf8_char_len((unsigned char)*pos);
-    if (old_len == new_len) {
-        memcpy(pos, utf8_char, new_len);
-    } else {
-        const size_t prefix_len = pos - str->data;
-        const size_t suffix_len = str->byte_size - prefix_len - old_len;
-        const size_t new_total = prefix_len + new_len + suffix_len;
+    const size_t prefix_len = pos - str->data;
+    const int old_char_bytes = utf8_char_len((unsigned char)*pos);
+    const size_t suffix_len = str->byte_size - prefix_len - old_char_bytes;
+    const size_t new_total_bytes = prefix_len + new_char_bytes + suffix_len;
 
-        char *new_data = malloc(new_total + 1);
-        if (new_data == NULL) {
-            result.status = STRING_ERR_ALLOCATE;
-            SET_MSG(result, "Cannot allocate memory");
+    string_t *new_str = malloc(sizeof(string_t));
+    if (new_str == NULL) {
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
 
-            return result;
-        }
-
-        memcpy(new_data, str->data, prefix_len);
-        memcpy(new_data + prefix_len, utf8_char, new_len);
-        memcpy(new_data + prefix_len + new_len, pos + old_len, suffix_len);
-        new_data[new_total] = '\0';
-
-        free(str->data);
-
-        str->data = new_data;
-        str->byte_size = new_total;
-        str->byte_capacity = new_total + 1;
+        return result;
     }
 
+    new_str->data = malloc(new_total_bytes + 1);
+    if (new_str->data == NULL) {
+        free(new_str);
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    // Copy prefix data from original string
+    memcpy(new_str->data, str->data, prefix_len);
+    // Copy the new character at requested index
+    memcpy(new_str->data + prefix_len, utf8_char, new_char_bytes);
+    // Copy suffix data from the original string by skipping the overwritten character
+    memcpy(new_str->data + prefix_len + new_char_bytes, pos + old_char_bytes, suffix_len);
+    new_str->data[new_total_bytes] = '\0';
+
+    new_str->byte_size = new_total_bytes;
+    new_str->byte_capacity = new_total_bytes + 1;
+    new_str->char_count = str->char_count;
+
     result.status = STRING_OK;
-    SET_MSG(result, "Character successfully set");
+    result.value.string = new_str;
+    SET_MSG(result, "Symbol successfully set");
 
     return result;
 }

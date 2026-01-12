@@ -543,7 +543,7 @@ int string_usage(void) {
 
     string_t *str1 = res.value.string;
     printf("Created string: \"%s\"\n", str1->data);
-    printf("Character count: %zu (%zu actual bytes)\n", string_len(str1), str1->byte_size);
+    printf("Character count: %zu (%zu actual bytes)\n", string_size(str1), str1->byte_size);
 
     string_result_t res_clone = string_clone(str1);
     if (res_clone.status != STRING_OK) {
@@ -566,7 +566,7 @@ int string_usage(void) {
 
     string_t *suffix = res_suffix.value.string;
     printf("Created another string: \"%s\"\n", suffix->data);
-    printf("Character count: %zu (%zu actual bytes)\n\n", string_len(suffix), suffix->byte_size);
+    printf("Character count: %zu (%zu actual bytes)\n\n", string_size(suffix), suffix->byte_size);
 
     string_result_t res_cat = string_concat(str1, suffix);
     if (res_cat.status != STRING_OK) {
@@ -656,7 +656,8 @@ int string_usage(void) {
 
         return 1;
     }
-    printf("Updated string: \"%s\"\n\n", concat_str->data);
+    printf("Updated string: \"%s\"\n\n", res_set.value.string->data);
+    string_destroy(res_set.value.string);
 
     // Get character from string (the emoji)
     string_result_t res_get = string_get_at(concat_str, 14);

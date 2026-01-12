@@ -22,7 +22,7 @@ void test_string_new(void) {
     assert(res.status == STRING_OK);
     assert(res.value.string != NULL);
     assert(strcmp(res.value.string->data, "hello") == 0);
-    assert(string_len(res.value.string) == 5);
+    assert(string_size(res.value.string) == 5);
     assert(res.value.string->byte_size == 5);
 
     string_destroy(res.value.string);
@@ -33,7 +33,7 @@ void test_string_new_empty(void) {
     string_result_t res = string_new("");
 
     assert(res.status == STRING_OK);
-    assert(string_len(res.value.string) == 0);
+    assert(string_size(res.value.string) == 0);
     assert(res.value.string->byte_size == 0);
     assert(res.value.string->data[0] == '\0');
 
@@ -62,7 +62,7 @@ void test_string_concat(void) {
     string_result_t res = string_concat(str1, str2);
     assert(res.status == STRING_OK);
     assert(strcmp(res.value.string->data, "Foo Bar") == 0);
-    assert(string_len(res.value.string) == 7);
+    assert(string_size(res.value.string) == 7);
 
     string_destroy(str1);
     string_destroy(str2);
@@ -155,9 +155,9 @@ void test_string_reverse_utf8(void) {
     string_result_t res = string_reverse(str);
     
     assert(res.status == STRING_OK);
-    assert(string_len(res.value.string) == 3);
+    assert(string_size(res.value.string) == 3);
     assert(strcmp(res.value.string->data, "Z🌍A") == 0);
-    assert(string_len(res.value.string) == 3);
+    assert(string_size(res.value.string) == 3);
 
     string_destroy(str);
     string_destroy(res.value.string);
@@ -198,10 +198,29 @@ void test_string_set_at(void) {
 
     // Replace 'B' with emoji
     string_result_t res = string_set_at(str, 1, "😆");
+    string_t *altered = res.value.string;
+    
     assert(res.status == STRING_OK);
-    assert(strcmp(str->data, "A😆C") == 0);
-    assert(string_len(str) == 3);
-    assert(str->byte_size == 6); // that is: A (1B) + emoji (4B) + C (1B)
+    assert(strcmp(altered->data, "A😆C") == 0);
+    assert(string_size(altered) == 3);
+    assert(altered->byte_size == 6); // that is: A (1B) + emoji (4B) + C (1B)
+
+    string_destroy(str);
+    string_destroy(altered);
+}
+
+// Test mutation of invalid UTF-8 symbol
+void test_string_set_at_invalid_utf8(void) {
+    string_t *str = string_new("ABC").value.string;
+
+    const char * const invalid_sym1 = "\xFF";
+    const char * const invalid_sym2 = "\x80";
+    
+    string_result_t res1 = string_set_at(str, 1, invalid_sym1);
+    assert(res1.status == STRING_ERR_INVALID_UTF8);
+
+    string_result_t res2 = string_set_at(str, 1, invalid_sym2);
+    assert(res2.status == STRING_ERR_INVALID_UTF8);
 
     string_destroy(str);
 }
@@ -298,6 +317,7 @@ int main(void) {
     TEST(string_get_at_overflow);
     TEST(string_set_at);
     TEST(string_set_at_overflow);
+    TEST(string_set_at_invalid_utf8);
     TEST(string_to_lower);
     TEST(string_to_upper);
     TEST(string_trim);
