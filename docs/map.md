@@ -5,7 +5,7 @@ aspects (internal design, memory layout, etc.) of the `Map` data structure.
 `Map` is an hash table that uses open addressing with linear probing for collision
 resolution and the [FNV-1a algorithm](https://en.wikipedia.org/wiki/Fowler–Noll–Vo_hash_function) as its hashing function. Resizing is performed
 automatically by doubling the capacity when the load factor exceeds 75%. Internally,
-this data structure is represented by the following two structures:
+this data structure is represented by the following two layouts:
 
 ```c
 typedef struct {
@@ -46,7 +46,7 @@ The `Map` data structure supports the following methods:
 - `size_t map_size(map)`: returns map size (i.e., the number of elements);  
 - `size_t map_capacity(map)`: returns map capacity (i.e., map total size).
 
-As you can see by the previous function signatures, most methods that operate
+As you can see from the previous function signatures, most methods that operate
 on the `Map` data type return a custom type called `map_result_t` which is
 defined as follows:
 
@@ -73,4 +73,4 @@ Each method that returns such type indicates whether the operation was successfu
 the `status` field and by providing a descriptive message on the `message` field. If the operation was
 successful (that is, `status == MAP_OK`), you can either move on with the rest of the program or read
 the returned value from the sum data type. Of course, you can choose to ignore the return value (if you're brave enough :D) as illustrated
-in the first part of the README.
+on the first part of the README.

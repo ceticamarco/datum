@@ -46,7 +46,7 @@ The `BigInt` data structure supports the following methods:
 - `bigint_result_t bigint_destroy(number)`: delete the big number;  
 - `bigint_result_t bigint_printf(format, ...)`: `printf` wrapper that introduces the `%B` placeholder to print big numbers. It supports variadic parameters.
 
-As you can see by the previous function signatures, methods that operate on the
+As you can see from the previous function signatures, methods that operate on the
 `BigInt` data type return a custom type called `bigint_result_t` which is defined as
 follows:
 
@@ -80,7 +80,7 @@ by setting the `status` field and by providing a descriptive message on the `mes
 field. If the operation was successful (that is, `status == BIGINT_OK`), you can either
 move on with the rest of the program or read the returned value from the sum data type.
 Of course, you can choose to ignore the return value (if you're brave enough :D) as 
-illustrated in the first part of the README.
+illustrated on the first part of the README.
 
 The sum data type (i.e., the `value` union) defines four different variables. Each
 of them has an unique scope as described below:

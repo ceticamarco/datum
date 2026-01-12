@@ -11,7 +11,7 @@ the standard library. It currently features:
 
 - [**Vector**](/docs/vector.md): a growable, contiguous array of homogenous generic data types;  
 - [**Map**](/docs/map.md): an associative array that handles generic heterogenous data types;  
-- [**BigInt**](/docs/bigint.md): a data type for arbitrary large integers.  
+- [**BigInt**](/docs/bigint.md): a data type for arbitrary large integers.
 
 ## Usage
 At its simplest, you can use this library as follows:
