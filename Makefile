@@ -56,7 +56,7 @@ $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
 
 # Benchmark rules
-$(BENCH_TARGET): $(BENCH_OBJ_DIR)/bench.o $(BENCH_OBJ_DIR)/vector.o $(BENCH_OBJ_DIR)/map.o
+$(BENCH_TARGET): $(BENCH_OBJ_DIR)/bench.o $(BENCH_OBJ_DIR)/vector.o $(BENCH_OBJ_DIR)/map.o $(BENCH_OBJ_DIR)/string.o
 	$(CC) $(BENCH_FLAGS) -o $@ $^
 
 $(BENCH_OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(BENCH_OBJ_DIR)
