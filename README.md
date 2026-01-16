@@ -2,8 +2,9 @@
     <h1>Datum</h1>
     <h6><i>Collection of dynamic and generic data structures.</i></h6>
 
-[![](https://github.com/ceticamarco/datum/actions/workflows/gcc-build.yml/badge.svg)](https://github.com/ceticamarco/datum/actions/workflows/gcc-build.yml)
-[![](https://github.com/ceticamarco/datum/actions/workflows/clang-build.yml/badge.svg)](https://github.com/ceticamarco/datum/actions/workflows/clang-build.yml)
+![](https://git.marcocetica.com/marco/datum/actions/workflows/gcc-build.yml/badge.svg)
+![](https://git.marcocetica.com/marco/datum/actions/workflows/clang-build.yml/badge.svg)
+
 </div>
 
 Datum is a collection of dynamic and generic data structures implemented from scratch in C with no external dependencies beyond
