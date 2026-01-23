@@ -29,7 +29,7 @@ At the time being, `Vector` supports the following methods:
 - `vector_result_t vector_push(vector, value)`: add a new value to the vector;  
 - `vector_result_t vector_set(vector, index, value)`: update the value of a given index if it exists;  
 - `vector_result_t vector_get(vector, index)`: return the value indexed by `index` if it exists;  
-- `map_result_t vector_sort(map, cmp)`: sort array using `cmp` function;  
+- `vector_result_t vector_sort(vector, cmp)`: sort vector using `cmp` function;  
 - `vector_result_t vector_pop(vector)`: pop last element from the vector following the LIFO policy;  
 - `vector_result_t vector_map(vector, callback, env)`: apply `callback` function to vector (in-place);  
 - `vector_result_t vector_filter(vector, callback, env)`: filter vector using `callback` (in-place);  
@@ -85,14 +85,80 @@ In particular, you should be aware of the following design choices:
 - The `vector_reduce` callback method requires the caller to initialize an _"accumulator"_ variable before calling this method;  
 - The `vector_filter` callback method is expected to return non-zero to keep the element and zero to filter it out.  
 - The `env` argument is an optional parameter to pass the external environment to the callback function. It is used to mock the behavior of closures, where
-the lexical environment is captured when the closure is created.
+the lexical environment is captured when the closure is created;  
+- Callback functions must be self-contained and handle all their resources. Additionally, they are responsible for ensuring their operations
+don't cause any undefined behavior.
+
+Let's look at an example:
+
+```c
+#include <stdio.h>
+#include "src/vector.h"
+
+// Callback functions
+void square(void *element, void *env);
+int is_even(const void *element, void *env);
+void add(void *accumulator, const void *element, void *env);
+
+int main(void) {
+    // Create an integer vector of initial capacity equal to 5
+    vector_t *vec = vector_new(5, sizeof(int)).value.vector;
+
+    int nums[] = {1, 2, 3, 4, 5};
+    for (int idx = 0; idx < 5; idx++) {
+        vector_push(vec, &nums[idx]);
+    }
+
+    // Square elements: [1, 2, 3, 4, 5] -> [1, 4, 9, 16, 25]
+    vector_map(vec, square, NULL);
+    for (int idx = 0; idx < 5; idx++) {
+        printf("%d ", *(int *)vector_get(vec, idx).value.element);
+    }
+    putchar('\n');
+
+    // Filter even elements: [1, 4, 9, 16, 25] -> [4, 16]
+    vector_filter(vec, is_even, NULL);
+    for (int idx = 0; idx < 2; idx++) {
+        printf("%d ", *(int *)vector_get(vec, idx).value.element);
+    }
+    putchar('\n');
+
+    // Sum elements: [4, 16] -> 20
+    int sum = 0;
+    vector_reduce(vec, &sum, add, NULL);
+    printf("%d\n", sum);
+
+    vector_destroy(vec);
+
+    return 0;
+}
+
+void square(void *element, void *env) {
+    (void)(env);
+    int *value = (int*)element;
+    *value = (*value) * (*value);
+}
+
+int is_even(const void *element, void *env) {
+    (void)(env);
+    int value = *(int*)element;
+
+    return (value % 2) == 0;
+}
+
+void add(void *accumulator, const void *element, void *env) {
+    (void)(env);
+    *(int*)accumulator += *(int*)element;
+}
+```
 
 ## Sorting
 As indicated in the [its documentation](/docs/vector.md), the `Vector` data type
 provides an efficient in-place sorting function called `vector_sort` that uses
 a builtin implementation of the [Quicksort algorithm](https://en.wikipedia.org/wiki/Quicksort). This method requires an user-defined comparison procedure which allows the
-caller to customize the sorting behavior. The comparison procedure must adhere to the
-following specification:
+caller to customize the sorting behavior. 
+
+The comparison procedure must adhere to the following specification:
 
 1. Must return `vector_order_t`, which is defined as follows:
 
@@ -107,7 +173,7 @@ typedef enum {
 and indicates the ordering relationship between any two elements.
 
 2. Must accept two `const void*` parameters representing two elements to compare;  
-3. Must be self-contained and handle all its own resources.
+3. Must be self-contained and handle all its resources. Additionally, it's responsible for ensuring its operations don't cause any undefined behavior.
 
 Let's look at some examples. For instance, let's say that we want to sort an array
 of integers in ascending and descending order:
@@ -117,8 +183,8 @@ of integers in ascending and descending order:
 #include "src/vector.h"
 
 vector_order_t cmp_int_asc(const void *x, const void *y) {
-    int x_int = *(const int*)x;
-    int y_int = *(const int*)y;
+    const int x_int = *(const int*)x;
+    const int y_int = *(const int*)y;
 
     if (x_int < y_int) return VECTOR_ORDER_LT;
     if (x_int > y_int) return VECTOR_ORDER_GT;

@@ -24,63 +24,35 @@ At its simplest, you can use this library as follows:
 #include <stdio.h>
 #include "src/vector.h"
 
-/*
- * Compile with: gcc main.c src/vector.c
- * Output: First element: 1
- *         Head of vector: 16, size is now: 1
- */ 
-
-// Callback functions
-vector_order_t cmp_int_asc(const void *x, const void *y);
-void square(void *element, void *env);
+vector_order_t cmp_asc(const void *a, const void *b);
 int is_even(const void *element, void *env);
-void add(void *accumulator, const void *element, void *env);
 
+/* Compile with: gcc main.c src/vector.c
+ * Output: '2 4'
+ */
 int main(void) {
-    // Create an integer vector of initial capacity equal to 5
-    vector_t *vec = vector_new(5, sizeof(int)).value.vector;
+    vector_t *vec = vector_new(5, sizeof(int)).value.vector; // Create a vector of integers
 
-    // Add some elements
-    vector_push(vec, &(int){1}); // Equivalent as below
-    int nums[] = {5, 2, 4, 3};
-    for (int idx = 0; idx < 4; idx++) { vector_push(vec, &nums[idx]); }
+    int nums[] = {5, 4, 1, 2, 3}; // Push some elements
+    for (int idx = 0; idx < 5; idx++) { vector_push(vec, &nums[idx]); }
 
-    // Sort array in ascending order: [1, 2, 3, 4, 5]
-    vector_sort(vec, cmp_int_asc);
+    vector_sort(vec, cmp_asc); // Sort vector
+    vector_filter(vec, is_even, NULL); // Filter even elements
 
-    // Print 1st element
-    const int first = *(int*)vector_get(vec, 0).value.element;
-    printf("First element: %d\n", first);
+    for (int idx = 0; idx < 2; idx++) { 
+        printf("%d ", *(int *)vector_get(vec, idx).value.element); 
+    }
+    putchar('\n');
 
-    int sum = 0;
-    vector_map(vec, square, NULL); // Square elements: [1, 2, 3, 4, 5] -> [1, 4, 9, 16, 25]
-    vector_filter(vec, is_even, NULL); // Filter even elements: [1, 4, 9, 16, 25] -> [4, 16]
-    vector_reduce(vec, &sum, add, NULL); // Sum elements: [4, 16] -> 20
-
-    // Pop second element using LIFO policy
-    const int head = *(int*)vector_pop(vec).value.element;
-    printf("Head of vector: %d, size is now: %zu\n", head, vector_size(vec));
-
-    // Remove vector from memory
-    vector_destroy(vec);
-    
+    vector_destroy(vec); // Remove vector from memory
     return 0;
 }
 
-vector_order_t cmp_int_asc(const void *x, const void *y) {
-    int x_int = *(const int*)x;
-    int y_int = *(const int*)y;
+vector_order_t cmp_asc(const void *a, const void *b) {
+    const int x = *(int *)a, y = *(int *)b;
 
-    if (x_int < y_int) return VECTOR_ORDER_LT;
-    if (x_int > y_int) return VECTOR_ORDER_GT;
-
-    return VECTOR_ORDER_EQ;
-}
-
-void square(void *element, void *env) {
-    (void)(env);
-    int *value = (int*)element;
-    *value = (*value) * (*value);
+    if (x < y) return VECTOR_ORDER_LT;
+    return (x > y) ? VECTOR_ORDER_GT : VECTOR_ORDER_EQ;
 }
 
 int is_even(const void *element, void *env) {
@@ -88,11 +60,6 @@ int is_even(const void *element, void *env) {
     int value = *(int*)element;
 
     return (value % 2) == 0;
-}
-
-void add(void *accumulator, const void *element, void *env) {
-    (void)(env);
-    *(int*)accumulator += *(int*)element;
 }
 ```
 
@@ -177,7 +144,7 @@ int main(void) {
 #include "src/string.h"
 
 /*
- * Compile with: gcc -O3 main.c src/string.c
+ * Compile with: gcc main.c src/string.c
  * Output: Final string: "Hello,World,😀" Splitted: ["Hello" "World" "😀" ]
  */
 int main(void) {
@@ -219,8 +186,7 @@ This will compile the library as well as the `usage.c` file, the unit tests and 
 > GNU Multiple Precision Arithmetic Library (GMP).
 
 ## Documentation
-For additional details about this library (internal design, memory
-management, data ownership, etc.) go to the [docs folder](/docs).
+For additional details about this library (internal design, memory management, data ownership, etc.) go to the [docs folder](/docs).
 
 ## Unit tests
 Datum provides some unit tests for `Vector`, `Map` and `BigInt`. To run them, you can issue the following commands:
