@@ -25,19 +25,19 @@ deletion.
 
 At the time being, `Vector` supports the following methods:
 
-- `vector_result_t vector_new(size, data_size)`: create a new vector;  
-- `vector_result_t vector_push(vector, value)`: add a new value to the vector;  
-- `vector_result_t vector_set(vector, index, value)`: update the value of a given index if it exists;  
-- `vector_result_t vector_get(vector, index)`: return the value indexed by `index` if it exists;  
-- `vector_result_t vector_sort(vector, cmp)`: sort vector using `cmp` function;  
-- `vector_result_t vector_pop(vector)`: pop last element from the vector following the LIFO policy;  
-- `vector_result_t vector_map(vector, callback, env)`: apply `callback` function to vector (in-place);  
-- `vector_result_t vector_filter(vector, callback, env)`: filter vector using `callback` (in-place);  
-- `vector_result_t vector_reduce(vector, accumulator, callback, env)`: fold/reduce vector using `callback`;  
-- `vector_result_t vector_clear(vector)`: logically reset the vector. That is, new pushes will overwrite the memory;  
-- `vector_result_t vector_destroy(vector)`: delete the vector;  
-- `size_t vector_size(vector)`: return vector size (i.e., the number of elements);  
-- `size_t vector_capacity(vector)`: return vector capacity (i.e., vector total size).
+- `vector_result_t vector_new(size, data_size)`: creates a new vector;  
+- `vector_result_t vector_push(vector, value)`: adds a new value to the vector;  
+- `vector_result_t vector_set(vector, index, value)`: updates the value of a given index if it exists;  
+- `vector_result_t vector_get(vector, index)`: returns the value indexed by `index` if it exists;  
+- `vector_result_t vector_sort(vector, cmp)`: sorts vector using `cmp` function;  
+- `vector_result_t vector_pop(vector)`: pops last element from the vector following the LIFO policy;  
+- `vector_result_t vector_map(vector, callback, env)`: applies `callback` function to vector (in-place);  
+- `vector_result_t vector_filter(vector, callback, env)`: filters vector using `callback` (in-place);  
+- `vector_result_t vector_reduce(vector, accumulator, callback, env)`: folds/reduces vector using `callback`;  
+- `vector_result_t vector_clear(vector)`: resets the vector logically. That is, new pushes will overwrite the memory;  
+- `vector_result_t vector_destroy(vector)`: deletes the vector;  
+- `size_t vector_size(vector)`: returns vector size (i.e., the number of elements);  
+- `size_t vector_capacity(vector)`: returns vector capacity (i.e., vector total size).
 
 As you can see from the previous function signatures, most methods that operate
 on the `Vector` data type return a custom type called `vector_result_t` which is

@@ -145,9 +145,7 @@ This will compile the library as well as the `usage.c` file, the unit tests and 
 
 > [!NOTE]
 > This project is primarily developed for learning purposes and was not created with industrial
-> or production use in mind. As such, it is not intended to compete with any existing C library.
-> In particular, the big number implementation does not aim to match the design, the maturity and
-> the performance of established solutions such as the
+> or production use in mind. As such, it is not intended to compete with any existing C library such as the
 > GNU Multiple Precision Arithmetic Library (GMP).
 
 ## Documentation
@@ -167,9 +165,11 @@ $ ./test_bigint
 Under the [`benchmark/`](/benchmark/) folder, you can find a simple benchmark program that stress the `Vector` and the `Map` data structures. You can run it by issuing the following command:
 
 ```sh
+$ make clean all CC=clang
 $ ./benchmark_datum
-Computing Vector average time...average time: 18 ms
-Computing Map average time...average time: 31 ms
+omputing Vector average time...average time: 8 ms
+Computing Map average time...average time: 53 ms
+Computing BigInt average time...average time: 76 ms
 ```
 
 

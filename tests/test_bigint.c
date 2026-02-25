@@ -213,8 +213,8 @@ void test_bigint_prod_neg(void) {
     bigint_destroy(prod.value.number);
 }
 
-// Test division between big numbers
-void test_bigint_div(void) {
+// Test division between big numbers where divisor is a single limb big number
+void test_bigint_div_single_limb(void) {
     bigint_result_t x = bigint_from_int(100);
     bigint_result_t y = bigint_from_int(2);
 
@@ -229,11 +229,33 @@ void test_bigint_div(void) {
     bigint_eq(quotient, "50");
     bigint_eq(remainder, "0");
 
-    bigint_destroy(quotient);
-    bigint_destroy(remainder);
+    bigint_destroy(quotient); bigint_destroy(remainder);
+    bigint_destroy(x.value.number); bigint_destroy(y.value.number);
+}
 
-    bigint_destroy(x.value.number);
-    bigint_destroy(y.value.number);
+// Test division between big numbers using Knuth's algorithm
+void test_bigint_div_knuth(void) {
+    // (1...9) x 8
+    const char *x_origin = "123456789123456789123456789123456789123456789123456789123456789123456789";
+    // (9...1) x 5
+    const char *y_origin = "987654321987654321987654321987654321987654321";
+
+    bigint_result_t x = bigint_from_string(x_origin);
+    bigint_result_t y = bigint_from_string(y_origin);
+
+    assert(x.status == BIGINT_OK && y.status == BIGINT_OK);
+
+    bigint_result_t div = bigint_divmod(x.value.number, y.value.number);
+    assert(div.status == BIGINT_OK);
+
+    bigint_t* const quotient = div.value.division.quotient;
+    bigint_t* const remainder = div.value.division.remainder;
+
+    bigint_eq(quotient, "124999998860937500014238281");
+    bigint_eq(remainder, "246737799246737799370194588370194588370194588");
+
+    bigint_destroy(quotient); bigint_destroy(remainder);
+    bigint_destroy(x.value.number); bigint_destroy(y.value.number);
 }
 
 // Test division between big numbers with negative dividend
@@ -262,7 +284,7 @@ void test_bigint_div_dividend(void) {
 
 // Test division between big numbers with negative divisor
 // This library follows C-style divison such that sign(remainder) = sign(dividend)
-void test_bigint_div_divisor(void) {
+void test_bigint_div_neg_divisor(void) {
     bigint_result_t x = bigint_from_int(13);
     bigint_result_t y = bigint_from_int(-4);
 
@@ -405,9 +427,10 @@ int main(void) {
     TEST(bigint_very_large_prod);
     TEST(bigint_prod_mixed);
     TEST(bigint_prod_neg);
-    TEST(bigint_div);
+    TEST(bigint_div_single_limb);
+    TEST(bigint_div_knuth);
     TEST(bigint_div_dividend);
-    TEST(bigint_div_divisor);
+    TEST(bigint_div_neg_divisor);
     TEST(bigint_div_neg);
     TEST(bigint_div_by_zero);
     TEST(bigint_clone);

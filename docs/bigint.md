@@ -33,17 +33,18 @@ and the boolean `is_negative` variable denotes its sign.
 
 The `BigInt` data structure supports the following methods:
 
-- `bigint_result_t bigint_from_int(value)`: create a big integer from a primitive `int` type;  
-- `bigint_result_t bigint_from_string(string_num)`: create a big integer from a C string;  
-- `bigint_result_t bigint_to_string(number)`: convert a big integer to a C string;  
-- `bigint_result_t bigint_clone(number)`:  clone a big integer;  
-- `bigint_result_t bigint_compare(x, y)`: compare two big integers, returning either `-1`, `0` or `1` if the first is less than, equal than or greater than the second, respectively;  
-- `bigint_result_t bigint_add(x, y)`: add two big integers together in $\mathcal{O}(n)$;  
-- `bigint_result_t bigint_sub(x, y)`: subtract two big integers in $\mathcal{O}(n)$;  
-- `bigint_result_t bigint_prod(x, y)`: multiply two big integers using Karatsuba's algorithm in $\mathcal{O}(n^{1.585})$;  
-- `bigint_result_t bigint_divmod(x, y)`: divide two big integers using *long division* algorithm in $\mathcal{O}(n^2)$, returning both the quotient and the remainder;  
-- `bigint_result_t bigint_mod(x, y)`: computes modulo of two big integers using *long division* algorithm in $\mathcal{O}(n^2)$;  
-- `bigint_result_t bigint_destroy(number)`: delete the big number;  
+- `bigint_result_t bigint_from_int(value)`: creates a big integer from a primitive `int` type;  
+- `bigint_result_t bigint_from_string(string_num)`: creates a big integer from a C string;  
+- `bigint_result_t bigint_to_string(number)`: converts a big integer to a C string;  
+- `bigint_result_t bigint_clone(number)`:  clones a big integer;  
+- `bigint_result_t bigint_compare(x, y)`: compares two big integers, returning either `-1`, `0` or `1` if the first is less than, equal than or greater than the second, respectively;  
+- `bigint_result_t bigint_add(x, y)`: adds two big integers together in $\mathcal{O}(n)$;  
+- `bigint_result_t bigint_sub(x, y)`: subtracts two big integers in $\mathcal{O}(n)$;  
+- `bigint_result_t bigint_prod(x, y)`: multiplies two big integers using Karatsuba's algorithm in $\mathcal{O}(n^{1.585})$;  
+- `bigint_result_t bigint_divmod(x, y)`: divides two big integers using _Knuth's Algorithm D_ in $\mathcal{O}(n \times m)$ where $n$ and $m$ are the number of base-10^9 
+parts/limbs in the divisor and the quotient, respectively. This method returns both the quotient and the remainder;  
+- `bigint_result_t bigint_mod(x, y)`: calls `bigint_divmod`, discards the quotient and yields the remainder;  
+- `bigint_result_t bigint_destroy(number)`: deletes the big number;  
 - `bigint_result_t bigint_printf(format, ...)`: `printf` wrapper that introduces the `%B` placeholder to print big numbers. It supports variadic parameters.
 
 As you can see from the previous function signatures, methods that operate on the
@@ -89,13 +90,4 @@ of them has an unique scope as described below:
 - `division`: result of `bigint_divmod`;  
 - `compare_status`: result of `bigint_compare`;  
 - `string_num`: result of `bigint_to_string`.
-
-
-> [!IMPORTANT]
-> Currently, the division implementation employs a quadratic-time algorithm derived from the conventional _"grade school"_ long-division method.
-> This approach performs adequately for integers of modest size (up to approximately 200 digits) but becomes highly inefficient when handling
-> substantially larger integers (~1500 digits).
->
-> Improving the efficiency of this algorithm would require further research into advanced
-> numerical algorithms, which is something that I currently not inclined to pursue.
 

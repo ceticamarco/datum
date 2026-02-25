@@ -37,12 +37,12 @@ free them before removing the keys or destroying the map.
 
 The `Map` data structure supports the following methods:
 
-- `map_result_t map_new()`: initialize a new map;  
-- `map_result_t map_add(map, key, value)`: add a `(key, value)` pair to the map;  
-- `map_result_t map_get(map, key)`: retrieve a values indexed by `key` if it exists;  
-- `map_result_t map_remove(map, key)`: remove a key from the map if it exists;  
-- `map_result_t map_clear(map)`: reset the map state;  
-- `map_result_t map_destroy(map)`: delete the map;  
+- `map_result_t map_new()`: initializes a new map;  
+- `map_result_t map_add(map, key, value)`: adds a `(key, value)` pair to the map;  
+- `map_result_t map_get(map, key)`: retrieves a values indexed by `key` if it exists;  
+- `map_result_t map_remove(map, key)`: removes a key from the map if it exists;  
+- `map_result_t map_clear(map)`: resets the map state;  
+- `map_result_t map_destroy(map)`: deletes the map;  
 - `size_t map_size(map)`: returns map size (i.e., the number of elements);  
 - `size_t map_capacity(map)`: returns map capacity (i.e., map total size).
 

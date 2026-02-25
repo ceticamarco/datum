@@ -6,6 +6,7 @@
 
 #include "../src/vector.h"
 #include "../src/map.h"
+#include "../src/bigint.h"
 
 typedef void (*test_fn_t)(size_t iterations);
 
@@ -20,11 +21,6 @@ void test_vector(size_t iterations) {
     for (size_t idx = 0; idx < iterations; idx++) {
         const int *val = (int*)vector_get(vec, idx).value.element;
         sum += *val;
-    }
-
-    // Another trick to prevent compiler optimization
-    if (sum == 0xB00B5) {
-        printf("sum = %llu\n", (unsigned long long)sum);
     }
 
     vector_destroy(vec);
@@ -53,32 +49,99 @@ void test_map(size_t iterations) {
 
     // Cleanup values
     for (size_t idx = 0; idx < map->capacity; idx++) {
-        if (map->elements[idx].state == ENTRY_OCCUPIED) {
-            int *val = (int*)map->elements[idx].value;
-            free(val);
-        }
+        snprintf(key, sizeof(key), "key_%zu", idx);
+
+        int *val = (int *)map_get(map, key).value.element;
+        free(val);
+
+        map_remove(map, key);
     }
 
     map_destroy(map);
 }
 
+void test_bigint(size_t iterations) {
+    volatile uint64_t accumulator = 0;
+
+    for (size_t idx = 1; idx <= iterations; idx++) {
+        long long a_val = (long long)idx * 123456789LL;
+        long long b_val = (long long)idx * 17777LL;
+
+        bigint_result_t a_res = bigint_from_int(a_val);
+        bigint_result_t b_res = bigint_from_int(b_val);
+
+        if (a_res.status != BIGINT_OK || b_res.status != BIGINT_OK) {
+            bigint_destroy(a_res.value.number);
+            bigint_destroy(b_res.value.number);
+            continue;
+        }
+
+        bigint_t *a = a_res.value.number;
+        bigint_t *b = b_res.value.number;
+
+        // Addition
+        bigint_result_t add_res = bigint_add(a, b);
+        if (add_res.status == BIGINT_OK) {
+            vector_result_t v = vector_get(add_res.value.number->digits, 0);
+            if (v.status == VECTOR_OK) { accumulator += *(int *)v.value.element; }
+            bigint_destroy(add_res.value.number);
+        }
+
+        // Substraction
+        bigint_result_t sub_res = bigint_sub(a, b);
+        if (sub_res.status == BIGINT_OK) {
+            vector_result_t v = vector_get(sub_res.value.number->digits, 0);
+            if (v.status == VECTOR_OK) { accumulator += *(int *)v.value.element; }
+            bigint_destroy(sub_res.value.number);
+        }
+
+        // Multiplication
+        bigint_result_t mul_res = bigint_prod(a, b);
+        if (mul_res.status == BIGINT_OK) {
+            vector_result_t v = vector_get(mul_res.value.number->digits, 0);
+            if (v.status == VECTOR_OK) { accumulator += *(int *)v.value.element; }
+            bigint_destroy(mul_res.value.number);
+        }
+
+        // Division
+        bigint_result_t div_res = bigint_divmod(a, b);
+        if (div_res.status == BIGINT_OK) {
+            vector_result_t v = vector_get(div_res.value.division.quotient->digits, 0);
+            if (v.status == VECTOR_OK) { accumulator += *(int *)v.value.element; }
+            bigint_destroy(div_res.value.division.quotient);
+            bigint_destroy(div_res.value.division.remainder);
+        }
+
+        bigint_destroy(a); bigint_destroy(b);
+    }
+}
+
+static inline uint64_t now_ns(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+
+    return (uint64_t)ts.tv_sec * 1000000000ULL + ts.tv_nsec;
+}
+
 long long benchmark(test_fn_t fun, size_t iterations, size_t runs) {
     long long total = 0;
-    for (size_t idx = 0; idx < runs; idx++) {
-        clock_t start = clock();
-        fun(iterations);
-        clock_t end = clock();
 
-        total += (long long)((end - start) * 1000 / CLOCKS_PER_SEC);
+    for (size_t idx = 0; idx < runs; idx++) {
+        uint64_t start = now_ns();
+        fun(iterations);
+        uint64_t end = now_ns();
+
+        total += (end - start);
     }
 
-    return total / runs;
+    return (long long)(total / runs / 1000000);
 }
 
 int main(void) {
     // Do a warmup run
     test_vector(1000);
     test_map(1000);
+    test_bigint(1000);
 
     printf("Computing Vector average time...");
     fflush(stdout);
@@ -87,6 +150,10 @@ int main(void) {
     printf("Computing Map average time...");
     fflush(stdout);
     printf("average time: %lld ms\n", benchmark(test_map, 1e5, 30));
+
+    printf("Computing BigInt average time...");
+    fflush(stdout);
+    printf("average time: %lld ms\n", benchmark(test_bigint, 1e5, 30));
 
     return 0;
 }
