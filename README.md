@@ -110,9 +110,9 @@ int main(void) {
 #include "src/bigint.h"
 
 /*
- * Compile with: gcc -O3 main.c src/bigint.c src/vector.c
+ * Compile with: clang -O3 fact.c src/bigint.c src/vector.c -o fact
  * Output: 20000! = 1819206320230345134827641...
- * Time: 4.01s user 0.00s system 99% cpu 4.021 total
+ * Time: 1.49s user 0.00s system 99% cpu 1.501 total
  */
 int main(void) {
     const int n = 20000;
