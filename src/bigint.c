@@ -23,7 +23,6 @@
 #include "bigint.h"
 #include "vector.h"
 
-// Internal methods
 /**
  * bigint_trim_zeros
  *  @number: a non-null big integer
@@ -1673,8 +1672,6 @@ bigint_result_t bigint_prod(const bigint_t *x, const bigint_t *y) {
     return result;
 }
 
-
-
 /**
  * bigint_divmod
  *  @x: a valid non-null big integer
@@ -1886,40 +1883,37 @@ bigint_result_t bigint_printf(const char *format, ...) {
 
     // Process string char by char
     for (const char *p = format; *p != '\0'; p++) {
-        if (*p == '%' && *(p + 1) == 'B') {
-            // Process a big number
-            bigint_t *num = va_arg(args, bigint_t*);
-            if (num == NULL) {
-                printf("<invalid string>");
-            } else {
-                bigint_result_t num_str_res = bigint_to_string(num);
-                if (num_str_res.status != BIGINT_OK) { 
-                    va_end(args); 
-                    return num_str_res; 
-                }
-                
-                char* const number_str = num_str_res.value.string_num;
-                printf("%s", number_str);
-                free(number_str);
-            }
+        if (*p == '%' && *(p + 1) != '%') {
             p++;
-        } else if (*p == '%' && *(p + 1) != '%') {
-            // Handle common printf placeholders
-            p++;
-            char placeholder = *p;
+            const char placeholder = *p;
 
             switch (placeholder) {
+                case 'B': {
+                    bigint_t *num = va_arg(args, bigint_t*);
+                    if (num == NULL) {
+                        for (const char *s = "<invalid big integer>"; *s != '\0'; s++) { putchar(*s); }
+                    } else {
+                        bigint_result_t num_str_res = bigint_to_string(num);
+                        if (num_str_res.status != BIGINT_OK) {
+                            va_end(args);
+                            return num_str_res;
+                        }
+
+                        char *number_str = num_str_res.value.string_num;
+                        for (const char *s = number_str; *s != '\0'; s++) { putchar(*s); }
+                        free(number_str);
+                    }
+                    break;
+                }
                 case 'd':
                 case 'i': {
                     int val = va_arg(args, int);
                     printf("%d", val);
-
                     break;
                 }
                 case 'u': {
                     unsigned int val = va_arg(args, unsigned int);
                     printf("%u", val);
-
                     break;
                 }
                 case 'l': {
@@ -1939,13 +1933,17 @@ bigint_result_t bigint_printf(const char *format, ...) {
                     break;
                 }
                 case 's': {
-                    char *val = va_arg(args, char*);
-                    printf("%s", val ? val : "<invalid string>");
+                    char* val = va_arg(args, char*);
+                    if (val) {
+                        for (const char *s = val; *s != '\0'; s++) { putchar(*s); }
+                    } else {
+                        for (const char *s = "<invalid string>"; *s != '\0'; s++) { putchar(*s); }
+                    }
                     break;
                 }
                 case 'c': {
                     int val = va_arg(args, int);
-                    printf("%c", val);
+                    putchar(val);
                     break;
                 }
                 case 'f': {
@@ -1954,7 +1952,7 @@ bigint_result_t bigint_printf(const char *format, ...) {
                     break;
                 }
                 case 'p': {
-                    void *val = va_arg(args, void*);
+                    void* const val = va_arg(args, void*);
                     printf("%p", val);
                     break;
                 }
