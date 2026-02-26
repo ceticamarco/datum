@@ -9,6 +9,10 @@
         (result).message[RESULT_MSG_SIZE - 1] = '\0'; \
     } while (0)
 
+#define REMOVE(ptr) \
+    free(ptr); \
+    ptr = NULL
+
 #define IS_DIGIT(c) ((c) >= '0') && ((c) <= '9')
 
 #include <stdio.h>
@@ -19,7 +23,6 @@
 #include "bigint.h"
 #include "vector.h"
 
-// Internal methods
 /**
  * bigint_trim_zeros
  *  @number: a non-null big integer
@@ -842,30 +845,32 @@ cleanup: // Destroy intermediate allocations on error
 }
 
 /**
- * bigint_dev
- *  @x: a valid non-null big integer (dividend)
- *  @y: a valid non-null big integer (divisor)
- *  
- *  Computes division using long division algorithm in O(n^2)
- * 
- *  Returns a bigint_result_t data type
+ * bigint_div
+ *  @x: a non-null big integer acting as a dividend
+ *  @y: a non-null big integer acting as a divisor
+ *
+ *  Computers the quotient floor (i.e., |X| / |Y|) using Knuth's Algorithm D
+ *  Adaoted from p. 273 of Don Knuth's TAoCP Vol. 2
+ *  The complexity is O(n * m) where 'n' and 'm' are the number of base-10^9
+ *  "parts" (the limbs in the code below) in the divisor and the quotient, respectively.
+ *
+ *  Returns a bigint_result_t containing the quotient.
+ *  The called of this function will be responsible for applying the sign.
  */
 static bigint_result_t bigint_div(const bigint_t *x, const bigint_t *y) {
     bigint_result_t result = {0};
     bigint_result_t tmp_res = {0};
 
     bigint_t *quotient = NULL;
-    bigint_t *remainder = NULL;
-    bigint_t *abs_y = NULL;
+    long long *u = NULL, *v = NULL, *q = NULL;
 
     if (x == NULL || y == NULL) {
         result.status = BIGINT_ERR_INVALID;
-        SET_MSG(result, "Invalid big numbers");
+        SET_MSG(result, "Invalid big integers");
 
         return result;
     }
 
-    // Check for division by zero
     const size_t y_size = vector_size(y->digits);
     if (y_size == 0) {
         result.status = BIGINT_ERR_DIV_BY_ZERO;
@@ -875,16 +880,16 @@ static bigint_result_t bigint_div(const bigint_t *x, const bigint_t *y) {
     }
 
     if (y_size == 1) {
-        vector_result_t y_val_res = vector_get(y->digits, 0);
-        if (y_val_res.status != VECTOR_OK) {
+        vector_result_t y0_res = vector_get(y->digits, 0);
+        if (y0_res.status != VECTOR_OK) {
             result.status = BIGINT_ERR_INVALID;
-            COPY_MSG(result, y_val_res.message);
+            COPY_MSG(result, y0_res.message);
 
             return result;
         }
 
-        int *y_val = (int*)y_val_res.value.element;
-        if (*y_val == 0) {
+        int *y0 = (int *)y0_res.value.element;
+        if (*y0 == 0) {
             result.status = BIGINT_ERR_DIV_BY_ZERO;
             SET_MSG(result, "Cannot divide by zero");
 
@@ -892,94 +897,230 @@ static bigint_result_t bigint_div(const bigint_t *x, const bigint_t *y) {
         }
     }
 
-    // If |x| < |y| then result is zero
     tmp_res = bigint_compare_abs(x, y);
-    if (tmp_res.status != BIGINT_OK) { return tmp_res; }
+    if (tmp_res.status != BIGINT_OK) {
+        return tmp_res;
+    }
 
     if (tmp_res.value.compare_status < 0) {
-        tmp_res = bigint_from_int(0);
-        if (tmp_res.status != BIGINT_OK) { return tmp_res; }
+        return bigint_from_int(0);
+    }
 
-        result.value.number = tmp_res.value.number;
+    const size_t x_size = vector_size(x->digits);
+    const size_t n = y_size;
+    const long long BASE = (long long)BIGINT_BASE;
+
+    quotient = malloc(sizeof(bigint_t));
+    if (quotient == NULL) {
+        result.status = BIGINT_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory for big integer");
+
+        goto cleanup;
+    }
+
+    quotient->digits = NULL;
+    quotient->is_negative = false;
+
+    // Single-limb divisor case. Here, we scan using 64-bit arithmetic in O(n)
+    if (y_size == 1) {
+        vector_result_t y0_res = vector_get(y->digits, 0);
+        if (y0_res.status != VECTOR_OK) {
+            result.status = BIGINT_ERR_INVALID;
+            COPY_MSG(result, y0_res.message);
+
+            goto cleanup;
+        }
+
+        long long divisor = *(int *)y0_res.value.element;
+
+        vector_result_t vec_res = vector_new(x_size, sizeof(int));
+        if (vec_res.status != VECTOR_OK) {
+            result.status = BIGINT_ERR_ALLOCATE;
+            COPY_MSG(result, vec_res.message);
+
+            goto cleanup;
+        }
+
+        quotient->digits = vec_res.value.vector;
+
+        long long remainder = 0;
+        for (int idx = (int)x_size - 1; idx >= 0; idx--) {
+            vector_result_t xidx_res = vector_get(x->digits, idx);
+            if (xidx_res.status != VECTOR_OK) {
+                result.status = BIGINT_ERR_INVALID;
+                COPY_MSG(result, xidx_res.message);
+
+                goto cleanup;
+            }
+
+            long long current = remainder * BASE + *(int *)xidx_res.value.element;
+            int q_idx = (int)(current / divisor);
+            remainder = current % divisor;
+
+            vector_result_t push_res = vector_push(quotient->digits, &q_idx);
+            if (push_res.status != VECTOR_OK) {
+                result.status = BIGINT_ERR_INVALID;
+                COPY_MSG(result, push_res.message);
+
+                goto cleanup;
+            }
+        }
+
+        // Restore the LSB-first order
+        const size_t q_size = vector_size(quotient->digits);
+        for (size_t lo = 0, hi = q_size - 1; lo < hi; hi--) {
+            vector_result_t lr = vector_get(quotient->digits, lo);
+            vector_result_t hr = vector_get(quotient->digits, hi);
+
+            if (lr.status != VECTOR_OK || hr.status != VECTOR_OK) {
+                result.status = BIGINT_ERR_INVALID;
+                SET_MSG(result, "Failed to reverse quotient digits");
+
+                goto cleanup;
+            }
+
+            int lower_val = *(int *)lr.value.element;
+            int higher_val = *(int *)hr.value.element;
+            vector_set(quotient->digits, lo, &higher_val);
+            vector_set(quotient->digits, hi, &lower_val);
+        }
+
+        bigint_result_t trim_res = bigint_trim_zeros(quotient);
+        if (trim_res.status != BIGINT_OK) { result = trim_res; goto cleanup; }
+
+        result.value.number = quotient;
         result.status = BIGINT_OK;
         SET_MSG(result, "Division between big integers was successful");
 
         return result;
     }
 
-    // Initialize quotient and remainder
-    tmp_res = bigint_from_int(0);
-    if (tmp_res.status != BIGINT_OK) { return tmp_res; }
-    quotient = tmp_res.value.number;
+    /* General case using Knuth's Algorithm
+     * First, some definitions:
+     * index 0 -> least significant limb;
+     * n -> limb count of divisor y
+     * m -> limb count of quotient (x_size - n)
+     * u[0 ... m + n] -> working copy of the (scaled) dividend +1 sentinel limb
+     * v[0 ... n - 1] -> working copy of the (scaled) divisor
+     * q[0 ... m] -> output quotient limbs
+     */
+    const size_t m = x_size - n;
 
-    tmp_res = bigint_from_int(0);
-    if (tmp_res.status != BIGINT_OK) { bigint_destroy(quotient); return tmp_res; }
-    remainder = tmp_res.value.number;
+    u = calloc(m + n + 1, sizeof(long long));
+    v = calloc(n, sizeof(long long));
+    q = calloc(m + 1, sizeof(long long));
 
-    // Create absolute value of y for later comparisons
-    tmp_res = bigint_clone(y);
-    if (tmp_res.status != BIGINT_OK) {
-        bigint_destroy(quotient);
-        bigint_destroy(remainder);
+    if (u == NULL || v == NULL || q == NULL) {
+        result.status = BIGINT_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate scratch arrays for division");
 
-        return tmp_res;
+        goto cleanup;
     }
 
-    abs_y = tmp_res.value.number;
-    abs_y->is_negative = false;
-
-    // Long division algorithm applied from MSB to LSB
-    const size_t x_size = vector_size(x->digits);
-    for (int idx = (int)x_size - 1; idx >= 0; idx--) {
-        // Shift remainder left by one base digit (multiplication by BASE)
-        tmp_res = bigint_shift_left(remainder, 1);
-        if (tmp_res.status != BIGINT_OK) { result = tmp_res; goto cleanup; }
-
-        bigint_t *shifted_remainder = tmp_res.value.number;
-        bigint_destroy(remainder);
-        remainder = shifted_remainder;
-
-        // Add current digit of 'x' to the least significant position of remainder
-        vector_result_t digit_res = vector_get(x->digits, idx);
-        if (digit_res.status != VECTOR_OK) {
+    for (size_t idx = 0; idx < x_size; idx++) {
+        vector_result_t get_res = vector_get(x->digits, idx);
+        if (get_res.status != VECTOR_OK) {
             result.status = BIGINT_ERR_INVALID;
-            COPY_MSG(result, digit_res.message);
+            COPY_MSG(result, get_res.message);
 
             goto cleanup;
         }
 
-        int *x_digit = (int*)digit_res.value.element;
+        u[idx] = *(int *)get_res.value.element;
+    }
 
-        vector_result_t set_res = vector_set(remainder->digits, 0, x_digit);
-        if (set_res.status != VECTOR_OK) {
+    for (size_t idx = 0; idx < n; idx++) {
+        vector_result_t get_res = vector_get(y->digits, idx);
+        if (get_res.status != VECTOR_OK) {
             result.status = BIGINT_ERR_INVALID;
-            COPY_MSG(result, set_res.message);
+            COPY_MSG(result, get_res.message);
 
             goto cleanup;
         }
 
-        tmp_res = bigint_trim_zeros(remainder);
-        if (tmp_res.status != BIGINT_OK) { result = tmp_res; goto cleanup; }
+        v[idx] = *(int *)get_res.value.element;
+    }
 
-        // COunt how many times 'y' fits into current remainder
-        size_t count = 0;
-        while (1) {
-            tmp_res = bigint_compare_abs(remainder, abs_y);
-            if (tmp_res.status != BIGINT_OK) { result = tmp_res; goto cleanup; }
-            if (tmp_res.value.compare_status < 0) { break; } // remainder < abs_y
+    // D1 (normalize): choose 'd' so that v[n - 1] >= BASE / 2 (after scaling)
+    const long long d = BASE / (v[n - 1] + 1);
 
-            // remainder = remainder - abs_y
-            tmp_res = bigint_sub_abs(remainder, abs_y);
-            if (tmp_res.status != BIGINT_OK) { result = tmp_res; goto cleanup; }
+    long long carry = 0;
+    for (size_t idx = 0; idx < x_size; idx++) {
+        long long current = u[idx] * d + carry;
+        u[idx] = current % BASE;
+        carry = current / BASE;
+    }
+    u[x_size] = carry;
 
-            bigint_t *new_remainder = tmp_res.value.number;
-            bigint_destroy(remainder);
-            remainder = new_remainder;
-            count++;
+    carry = 0;
+    for (size_t idx = 0; idx < n; idx++) {
+        long long current = v[idx] * d + carry;
+        v[idx] = current % BASE;
+        carry = current / BASE;
+    }
+
+    // D2-D6: the main loop. One iteration produces one quotient limb
+    for (long long j = (long long)m; j >= 0; j--) {
+        size_t jj = (size_t)j;
+
+        // D3: 2-by-1 trial quotient
+        long long two_limb = u[jj + n] * BASE + u[jj + n - 1];
+        long long q_hat = two_limb / v[n - 1];
+        long long r_hat = two_limb % v[n - 1];
+
+        while (q_hat >= BASE || ((n >= 2) && (q_hat * v[n - 2]) > (BASE * r_hat + u[jj + n - 2]))) {
+            q_hat--;
+            r_hat += v[n - 1];
+            if (r_hat >= BASE) { break; }
         }
 
-        // Add count to quotient digits
-        vector_result_t push_res = vector_push(quotient->digits, &count);
+        // D4: multiply-subtract u[j ... j + n] -= q_hat * v[0 ... n - 1]
+        long long borrow = 0;
+        for (size_t idx = 0; idx < n; idx++) {
+            long long product = q_hat * v[idx] + borrow;
+            borrow = product / BASE;
+            long long diff = u[jj + idx] - (product % BASE);
+            if (diff < 0) {
+                diff += BASE;
+                borrow++;
+            }
+            u[jj + idx] = diff;
+        }
+        u[jj + n] -= borrow;
+
+        // D5: store quotient digit
+        q[jj] = q_hat;
+
+        // D6: if 'u' went negative, add 'v' back once and decrement q[j]
+        if (u[jj + n] < 0) {
+            q[jj]--;
+            carry = 0;
+            for (size_t idx = 0; idx < n; idx++) {
+                long long sum = u[jj + idx] + v[idx] + carry;
+                u[jj + idx] = sum % BASE;
+                carry = sum / BASE;
+            }
+            u[jj + n] += carry;
+        }
+    }
+
+    // Delete working copy from memory
+    REMOVE(u); REMOVE(v);
+
+    // Build the bigint quotient from q[0 ... m] (index 0 = LSB)
+    vector_result_t vec_res = vector_new(m + 1, sizeof(int));
+    if (vec_res.status != VECTOR_OK) {
+        result.status = BIGINT_ERR_ALLOCATE;
+        COPY_MSG(result, vec_res.message);
+
+        goto cleanup;
+    }
+
+    quotient->digits = vec_res.value.vector;
+    for (size_t idx = 0; idx <= m; idx++) {
+        int q_idx = (int)q[idx];
+
+        vector_result_t push_res = vector_push(quotient->digits, &q_idx);
         if (push_res.status != VECTOR_OK) {
             result.status = BIGINT_ERR_INVALID;
             COPY_MSG(result, push_res.message);
@@ -988,34 +1129,10 @@ static bigint_result_t bigint_div(const bigint_t *x, const bigint_t *y) {
         }
     }
 
-    // Reverse quotient digits
-    const size_t q_size = vector_size(quotient->digits);
-    for (size_t idx = 0; idx < q_size / 2; idx++) {
-        vector_result_t left_res = vector_get(quotient->digits, idx);
-        vector_result_t right_res = vector_get(quotient->digits, q_size - 1 - idx);
+    REMOVE(q);
 
-        if (left_res.status != VECTOR_OK || right_res.status != VECTOR_OK) {
-            result.status = BIGINT_ERR_INVALID;
-            SET_MSG(result, "Failed to access vector elements");
-
-            goto cleanup;
-        }
-
-        int *left = (int*)left_res.value.element;
-        int *right = (int*)right_res.value.element;
-        int temp = *left;
-
-        vector_set(quotient->digits, idx, right);
-        vector_set(quotient->digits, q_size - 1 - idx, &temp);
-    }
-
-    quotient->is_negative = (x->is_negative != y->is_negative);
-
-    tmp_res = bigint_trim_zeros(quotient);
-    if (tmp_res.status != BIGINT_OK) { result = tmp_res; goto cleanup; }
-
-    bigint_destroy(remainder);
-    bigint_destroy(abs_y);
+    bigint_result_t trim_res = bigint_trim_zeros(quotient);
+    if (trim_res.status != BIGINT_OK) { result = trim_res; goto cleanup; }
 
     result.value.number = quotient;
     result.status = BIGINT_OK;
@@ -1024,12 +1141,12 @@ static bigint_result_t bigint_div(const bigint_t *x, const bigint_t *y) {
     return result;
 
 cleanup:
+    free(u); free(v); free(q);
     if (quotient) { bigint_destroy(quotient); }
-    if (remainder) { bigint_destroy(remainder); }
-    if (abs_y) { bigint_destroy(abs_y); }
 
     return result;
 }
+
 
 /**
  * bigint_from_int
@@ -1037,7 +1154,7 @@ cleanup:
  * 
  *  Takes an integer and convert it to a big integer
  * 
- *  Returns a big_int_result_t data type containing a new big integer
+ *  Returns a bigint_result_t data type containing a new big integer
  */
 bigint_result_t bigint_from_int(long long value) {
     bigint_result_t result = {0};
@@ -1555,14 +1672,14 @@ bigint_result_t bigint_prod(const bigint_t *x, const bigint_t *y) {
     return result;
 }
 
-
-
 /**
  * bigint_divmod
  *  @x: a valid non-null big integer
  *  @y: a valid non-null big integer
  * 
- *  Computes division with remainder
+ *  Computes truncated division with remainder. That is:
+ *   quotient = trunc(x / y)       sign = sign(x) XOR sign(y)
+ *   remainder = x - y * quotient  sign = sign(x)
  *  
  *  Returns a bigint_result_t data type
  */
@@ -1570,7 +1687,6 @@ bigint_result_t bigint_divmod(const bigint_t *x, const bigint_t *y) {
     bigint_result_t result = {0};
     bigint_result_t tmp_res = {0};
 
-    // Intermediate results
     bigint_t *quotient = NULL;
     bigint_t *y_times_q = NULL;
     bigint_t *remainder = NULL;
@@ -1582,11 +1698,10 @@ bigint_result_t bigint_divmod(const bigint_t *x, const bigint_t *y) {
         return result;
     }
 
-    // Check for division by zero
     const size_t y_size = vector_size(y->digits);
     if (y_size == 0) {
         result.status = BIGINT_ERR_DIV_BY_ZERO;
-        SET_MSG(result, "Division by zero");
+        SET_MSG(result, "Cannot divide by zero");
 
         return result;
     }
@@ -1600,16 +1715,16 @@ bigint_result_t bigint_divmod(const bigint_t *x, const bigint_t *y) {
             return result;
         }
 
-        int *y_val = (int*)y_val_res.value.element;
+        int *y_val = (int *)y_val_res.value.element;
         if (*y_val == 0) {
             result.status = BIGINT_ERR_DIV_BY_ZERO;
-            SET_MSG(result, "Division by zero");
+            SET_MSG(result, "Cannot divide by zero");
 
             return result;
         }
     }
 
-    // |x| < |y| then quotient is 0 and remainder is x
+    // |x| < |y|: quotient is 0, remainder is x
     tmp_res = bigint_compare_abs(x, y);
     if (tmp_res.status != BIGINT_OK) { result = tmp_res; goto cleanup; }
 
@@ -1624,6 +1739,7 @@ bigint_result_t bigint_divmod(const bigint_t *x, const bigint_t *y) {
 
         result.value.division.quotient = quotient;
         result.value.division.remainder = remainder;
+
         result.status = BIGINT_OK;
         SET_MSG(result, "Division between big integers was successful");
 
@@ -1634,7 +1750,10 @@ bigint_result_t bigint_divmod(const bigint_t *x, const bigint_t *y) {
     if (tmp_res.status != BIGINT_OK) { result = tmp_res; goto cleanup; }
     quotient = tmp_res.value.number;
 
-    // Compute r = x - y * q
+    // Set quotient sign accordingly
+    quotient->is_negative = (x->is_negative != y->is_negative);
+
+    // Compute remainder using r = x - y * q
     tmp_res = bigint_prod(y, quotient);
     if (tmp_res.status != BIGINT_OK) { result = tmp_res; goto cleanup; }
     y_times_q = tmp_res.value.number;
@@ -1643,20 +1762,31 @@ bigint_result_t bigint_divmod(const bigint_t *x, const bigint_t *y) {
     if (tmp_res.status != BIGINT_OK) { result = tmp_res; goto cleanup; }
     remainder = tmp_res.value.number;
 
-    // Ensure that remainder has correct sign (i.e., same as dividend x)
-    // In C-style division, sign(remainder) = sign(dividend)
-    remainder->is_negative = x->is_negative;
-
     tmp_res = bigint_trim_zeros(remainder);
     if (tmp_res.status != BIGINT_OK) { result = tmp_res; goto cleanup; }
-    
+
+    // Set remainder sign accordingly
+    vector_result_t r0 = vector_get(remainder->digits, 0);
+    if (r0.status != VECTOR_OK) {
+        result.status = BIGINT_ERR_INVALID;
+        COPY_MSG(result, r0.message);
+
+        goto cleanup;
+    }
+
+    bool rem_is_zero = (vector_size(remainder->digits) == 1 && *(int *)r0.value.element == 0);
+
+    if (!rem_is_zero) {
+        remainder->is_negative = x->is_negative;
+    }
+
     result.value.division.quotient = quotient;
     result.value.division.remainder = remainder;
     result.status = BIGINT_OK;
     SET_MSG(result, "Division between big integers was successful");
 
     bigint_destroy(y_times_q);
-    
+
     return result;
 
 cleanup:
@@ -1753,40 +1883,37 @@ bigint_result_t bigint_printf(const char *format, ...) {
 
     // Process string char by char
     for (const char *p = format; *p != '\0'; p++) {
-        if (*p == '%' && *(p + 1) == 'B') {
-            // Process a big number
-            bigint_t *num = va_arg(args, bigint_t*);
-            if (num == NULL) {
-                printf("<invalid string>");
-            } else {
-                bigint_result_t num_str_res = bigint_to_string(num);
-                if (num_str_res.status != BIGINT_OK) { 
-                    va_end(args); 
-                    return num_str_res; 
-                }
-                
-                char* const number_str = num_str_res.value.string_num;
-                printf("%s", number_str);
-                free(number_str);
-            }
+        if (*p == '%' && *(p + 1) != '%') {
             p++;
-        } else if (*p == '%' && *(p + 1) != '%') {
-            // Handle common printf placeholders
-            p++;
-            char placeholder = *p;
+            const char placeholder = *p;
 
             switch (placeholder) {
+                case 'B': {
+                    bigint_t *num = va_arg(args, bigint_t*);
+                    if (num == NULL) {
+                        for (const char *s = "<invalid big integer>"; *s != '\0'; s++) { putchar(*s); }
+                    } else {
+                        bigint_result_t num_str_res = bigint_to_string(num);
+                        if (num_str_res.status != BIGINT_OK) {
+                            va_end(args);
+                            return num_str_res;
+                        }
+
+                        char *number_str = num_str_res.value.string_num;
+                        for (const char *s = number_str; *s != '\0'; s++) { putchar(*s); }
+                        free(number_str);
+                    }
+                    break;
+                }
                 case 'd':
                 case 'i': {
                     int val = va_arg(args, int);
                     printf("%d", val);
-
                     break;
                 }
                 case 'u': {
                     unsigned int val = va_arg(args, unsigned int);
                     printf("%u", val);
-
                     break;
                 }
                 case 'l': {
@@ -1806,13 +1933,17 @@ bigint_result_t bigint_printf(const char *format, ...) {
                     break;
                 }
                 case 's': {
-                    char *val = va_arg(args, char*);
-                    printf("%s", val ? val : "<invalid string>");
+                    char* val = va_arg(args, char*);
+                    if (val) {
+                        for (const char *s = val; *s != '\0'; s++) { putchar(*s); }
+                    } else {
+                        for (const char *s = "<invalid string>"; *s != '\0'; s++) { putchar(*s); }
+                    }
                     break;
                 }
                 case 'c': {
                     int val = va_arg(args, int);
-                    printf("%c", val);
+                    putchar(val);
                     break;
                 }
                 case 'f': {
@@ -1821,7 +1952,7 @@ bigint_result_t bigint_printf(const char *format, ...) {
                     break;
                 }
                 case 'p': {
-                    void *val = va_arg(args, void*);
+                    void* const val = va_arg(args, void*);
                     printf("%p", val);
                     break;
                 }

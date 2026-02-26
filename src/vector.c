@@ -9,7 +9,6 @@
 
 #include "vector.h"
 
-// Internal methods
 /**
  * vector_resize
  *  @vector: a non-null vector

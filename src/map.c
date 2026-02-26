@@ -10,8 +10,6 @@
 
 #include "map.h"
 
-// Internal methods
-
 /**
  * hash_key
  *  @key: The input string for the hash function

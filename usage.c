@@ -495,7 +495,7 @@ int bigint_usage(void) {
     // Print result
     bigint_printf("multiplication result = %B\n", prod);
 
-    bigint_t *a = bigint_from_string(x_origin).value.number;
+    bigint_t *a = bigint_from_string(large_x).value.number;
     bigint_t *b = bigint_from_string(y_origin).value.number;
 
     // Divide two big integers
