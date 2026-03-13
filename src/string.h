@@ -43,7 +43,7 @@ typedef struct {
 
 // Public APIs
 string_result_t string_new(const char *c_str);
-string_result_t string_close(const string_t *str);
+string_result_t string_clone(const string_t *str);
 string_result_t string_concat(const string_t *x, const string_t *y);
 string_result_t string_contains(const string_t *haystack, const string_t *needle);
 string_result_t string_slice(const string_t *str, size_t start, size_t end);
