@@ -432,8 +432,9 @@ string_result_t string_eq(const string_t *x, const string_t *y, bool case_sensit
     }
 
     if (x->char_count != y->char_count) {
-        result.status = STRING_ERR_INVALID;
-        SET_MSG(result, "Strings differ in length");
+        result.value.is_equ = false;
+        result.status = STRING_OK;
+        SET_MSG(result, "Comparison completed successfully");
 
         return result;
     }
