@@ -18,7 +18,7 @@ typedef enum {
 typedef struct {
     char *data;
     size_t byte_size; // Size in bytes minus the NULL terminator
-    size_t byte_cap; // Total allocated memory
+    size_t byte_capacity; // Total allocated memory
     size_t char_count; // Number of symbols
 } string_t;
 
@@ -28,7 +28,8 @@ typedef struct {
     union {
         string_t *string; // For new, clone, slice, reverse, trim
         char *symbol; // For get_at
-        bool is_eq; // For comparison
+        int64_t idx; // For contains
+        bool is_equ; // For comparison
         struct { // For split
             string_t **strings;
             size_t count;
@@ -64,4 +65,6 @@ static inline size_t string_size(const string_t *str) {
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif

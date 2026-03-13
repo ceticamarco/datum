@@ -72,7 +72,7 @@ static bool utf8_scan(const char *str, size_t *out_byte_size, size_t *out_char_c
                 return false;
             }
         }
-        p_size += len;
+        b_size += len;
         c_count++;
     }
 
@@ -126,7 +126,7 @@ static int utf8_encode(uint32_t codepoint, char *out) {
 
     if (codepoint <= 0x7FF) {
         out[0] = (char)(0xC0 | (codepoint >> 6));
-        out[1] = (char)(0x80 | (codepount & 0x3F));
+        out[1] = (char)(0x80 | (codepoint & 0x3F));
 
         return 2;
     }
@@ -149,4 +149,321 @@ static int utf8_encode(uint32_t codepoint, char *out) {
     }
 
     return 0;
+}
+
+/**
+ * string_new
+ *  @c_str: a C-string
+ *
+ *  Returns a string_result_t containing a new String data type
+ */
+string_result_t string_new(const char *c_str) {
+    string_result_t result = {0};
+
+    if (c_str == NULL) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid input string");
+
+        return result;
+    }
+
+    size_t b_size, c_count;
+    if (utf8_scan(c_str, &b_size, &c_count) == 0) {
+        result.status = STRING_ERR_INVALID_UTF8;
+        SET_MSG(result, "Malformed UTF-8 sequence");
+
+        return result;
+    }
+
+    string_t *str = malloc(sizeof(string_t));
+    if (str == NULL) {
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    str->data = malloc(b_size + 1);
+    if (str->data == NULL) {
+        free(str);
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    memcpy(str->data, c_str, b_size);
+    str->data[b_size] = '\0';
+    str->byte_size = b_size;
+    str->byte_capacity = b_size + 1;
+    str->char_count = c_count;
+
+    result.status = STRING_OK;
+    result.value.string = str;
+    SET_MSG(result, "String successfully created");
+
+    return result;
+}
+
+/**
+ * string_clone
+ *  @str: a non-null string
+ *
+ *  Deep copies @str
+ *
+ *  Returns a string_result_t containing the copied string
+ */
+string_result_t string_clone(const string_t *str) {
+    string_result_t result = {0};
+
+    if (str == NULL) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid string");
+
+        return result;
+    }
+
+    string_t *str_copy = malloc(sizeof(string_t));
+    if (str_copy == NULL) {
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    str_copy->data = malloc(str->byte_size + 1);
+    if (str_copy->data == NULL) {
+        free(str_copy);
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    memcpy(str_copy->data, str->data, str->byte_size);
+    str_copy->data[str->byte_size] = '\0';
+    str_copy->byte_size = str->byte_size;
+    str_copy->byte_capacity = str->byte_size + 1;
+    str_copy->char_count = str->char_count;
+
+    result.status = STRING_OK;
+    result.value.string = str_copy;
+    SET_MSG(result, "String successfully copied");
+
+return result;
+}
+
+/**
+ * string_concat
+ *  @x: a non-null string
+ *  @y: a non-null string
+ *
+ *  Concats @x and @y in a new String
+ *
+ *  Returns a string_result_t containing the new string
+ */
+string_result_t string_concat(const string_t *x, const string_t *y) {
+    string_result_t result = {0};
+
+    if (x == NULL || y == NULL) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid strings");
+
+        return result;
+    }
+
+    if (x->byte_size > SIZE_MAX - y->byte_size - 1) {
+        result.status = STRING_ERR_OVERFLOW;
+        SET_MSG(result, "Concatenation exceeds size limits");
+
+        return result;
+    }
+
+    size_t new_size = x->byte_size + y->byte_size;
+    char *buf = malloc(new_size + 1);
+    if (buf == NULL) {
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    memcpy(buf, x->data, x->byte_size);
+    memcpy(buf + x->byte_size, y->data, y->byte_size);
+    buf[new_size] = '\0';
+    result = string_new(buf);
+    free(buf);
+
+    return result;
+}
+
+/**
+ * string_contains
+ * @haystack: a non-null string
+ * @needle: a non-null string
+ *
+ * Finds @needle on @haystack
+ *
+ * Returns a string_result_t containing the index to the beginning of the located string
+ * (if the substring has been found)
+ */
+string_result_t string_contains(const string_t *haystack, const string_t *needle) {
+    string_result_t result = {
+        .status = STRING_OK,
+        .value.idx = -1
+    };
+
+    if (haystack == NULL || needle == NULL || needle->byte_size == 0) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid substrings");
+
+        return result;
+    }
+
+    const char *found = strstr(haystack->data, needle->data);
+    if (found) {
+        size_t char_idx = 0;
+        const char *ptr = haystack->data;
+        while (ptr < found) {
+            ptr += utf8_char_len((unsigned char)*ptr);
+            char_idx++;
+        }
+
+        result.value.idx = (int64_t)char_idx;
+        SET_MSG(result, "Substring found");
+    } else {
+        SET_MSG(result, "Substring not found");
+    }
+
+    return result;
+}
+
+/**
+ * string_slice
+ *  @str: a non-null string
+ *  @start: the lower bound (inclusive)
+ *  @end: the upper bound (inclusive)
+ *
+ *  Extracts a slice from @str between @start and @end (inclusive)
+ *
+ *  Returns a string_result_t data type containing the slice
+ */
+string_result_t string_slice(const string_t *str, size_t start, size_t end) {
+    string_result_t result = {0};
+
+    if (str == NULL) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid string");
+
+        return result;
+    }
+
+    if (start > end || end >= str->char_count) {
+        result.status = STRING_ERR_OVERFLOW;
+        SET_MSG(result, "Index out of bounds");
+
+        return result;
+    }
+
+    size_t start_byte_offset = 0;
+    for (size_t idx = 0; idx < start; idx++) {
+        start_byte_offset += utf8_char_len((unsigned char)str->data[start_byte_offset]);
+    }
+
+    size_t end_byte_offset = start_byte_offset;
+    for (size_t idx = start; idx <= end; idx++) {
+        end_byte_offset += utf8_char_len((unsigned char)str->data[end_byte_offset]);
+    }
+
+    const size_t slice_byte_size = (end_byte_offset - start_byte_offset);
+
+    string_t *slice = malloc(sizeof(string_t));
+    if (slice == NULL) {
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    slice->data = malloc(slice_byte_size + 1);
+    if (slice->data == NULL) {
+        free(slice);
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    memcpy(slice->data, str->data + start_byte_offset, slice_byte_size);
+    slice->data[slice_byte_size] = '\0';
+
+    slice->byte_size = slice_byte_size;
+    slice->byte_capacity = slice_byte_size + 1;
+    slice->char_count = end - start + 1;
+
+    result.status = STRING_OK;
+    result.value.string = slice;
+    SET_MSG(result, "String sliced successfully");
+
+    return result;
+}
+
+/**
+ * string_eq
+ *  @x: a non-null string
+ *  @y: a non-null string
+ *  @case_sensitive: boolean value for case sensitive comparison
+ *
+ *  Compares two Strings
+ *
+ *  Returns a string_result_t containing the comparison result
+ */
+string_result_t string_eq(const string_t *x, const string_t *y, bool case_sensitive) {
+    string_result_t result = {
+        .status = STRING_OK,
+        .value.is_equ = false
+    };
+
+    if (x == NULL || y == NULL) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid strings");
+
+        return result;
+    }
+
+    if (x->char_count != y->char_count) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Strings differ in length");
+
+        return result;
+    }
+
+    if (case_sensitive) {
+        result.value.is_equ = (strcmp(x->data, y->data) == 0);
+    } else {
+        const char *p1 = x->data, *p2 = y->data;
+        while (*p1 && *p2) {
+            int l1, l2;
+
+            const uint32_t codepoint1 = utf8_decode(p1, &l1);
+            const uint32_t codepoint2 = utf8_decode(p2, &l2);
+            const uint32_t c1 = (codepoint1 >= 'A' && codepoint1 <= 'Z') ? codepoint1 + 32 : codepoint1;
+            const uint32_t c2 = (codepoint2 >= 'A' && codepoint2 <= 'Z') ? codepoint2 + 32 : codepoint2;
+
+            if (c1 != c2) {
+                result.value.is_equ = false;
+
+                return result;
+            }
+
+            p1 += l1;
+            p2 += l2;
+        }
+
+        result.value.is_equ = (*p1 == *p2);
+    }
+
+    SET_MSG(result, "Comparison completed successfully");
+
+    return result;
 }
