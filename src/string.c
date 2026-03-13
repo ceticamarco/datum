@@ -250,7 +250,7 @@ string_result_t string_clone(const string_t *str) {
     result.value.string = str_copy;
     SET_MSG(result, "String successfully copied");
 
-return result;
+    return result;
 }
 
 /**
@@ -293,6 +293,8 @@ string_result_t string_concat(const string_t *x, const string_t *y) {
     buf[new_size] = '\0';
     result = string_new(buf);
     free(buf);
+
+    SET_MSG(result, "String successfully concatenated");
 
     return result;
 }
@@ -465,6 +467,285 @@ string_result_t string_eq(const string_t *x, const string_t *y, bool case_sensit
     }
 
     SET_MSG(result, "Comparison completed successfully");
+
+    return result;
+}
+
+/**
+ * string_get_at
+ *  @str: a non-null string
+ *  @position: the position of the symbol to read
+ *
+ *  Gets symbol indexed by @position from @str
+ *
+ *  Returns a string_result_t containing the symbol as a C string
+ */
+string_result_t string_get_at(const string_t *str, size_t position) {
+    string_result_t result = {0};
+
+    if (str == NULL) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid string");
+
+        return result;
+    }
+
+    if (position >= str->char_count) {
+        result.status = STRING_ERR_OVERFLOW;
+        SET_MSG(result, "Index out of bounds");
+
+        return result;
+    }
+
+    const char *ptr = str->data;
+    for (size_t idx = 0; idx < position; idx++) {
+        ptr += utf8_char_len((unsigned char)*ptr);
+    }
+
+    int char_len = utf8_char_len((unsigned char)*ptr);
+    char *utf8_char = malloc(char_len + 1);
+    if (utf8_char == NULL) {
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    memcpy(utf8_char, ptr, char_len);
+    utf8_char[char_len] = '\0';
+
+    result.value.symbol = utf8_char;
+    result.status = STRING_OK;
+    SET_MSG(result, "Symbol successfully retrieved");
+
+    return result;
+}
+
+/**
+ * string_set_at
+ *  @str: a non-null string
+ *  @position: the position to write into
+ *  @utf8_char: an UTF8 symbol
+ *
+ *  Writes @utf8_char into @str at index @position
+ *
+ *  Returns a string_result_t data type
+ */
+string_result_t string_set_at(const string_t *str, size_t position, const char *utf8_char) {
+    string_result_t result = {0};
+
+    if (str == NULL) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid string");
+
+        return result;
+    }
+
+    int new_char_bytes;
+    if (utf8_is_char_valid(utf8_char, &new_char_bytes) == 0) {
+        result.status = STRING_ERR_INVALID_UTF8;
+        SET_MSG(result, "Invalid UTF-8 character");
+
+        return result;
+    }
+
+    if (position >= str->char_count) {
+        result.status = STRING_ERR_OVERFLOW;
+        SET_MSG(result, "Index out of bounds");
+
+        return result;
+    }
+
+    // Locate the byte offset of the character to replace
+    const char *pos = str->data;
+    for (size_t idx = 0; idx < position; idx++) {
+        pos += utf8_char_len((unsigned char)*pos);
+    }
+
+    const size_t prefix_len = pos - str->data;
+    const int old_char_bytes = utf8_char_len((unsigned char)*pos);
+    const size_t suffix_len = str->byte_size - prefix_len - old_char_bytes;
+    const size_t new_total_bytes = prefix_len + new_char_bytes + suffix_len;
+
+    string_t *new_str = malloc(sizeof(string_t));
+    if (new_str == NULL) {
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    new_str->data = malloc(new_total_bytes + 1);
+    if (new_str->data == NULL) {
+        free(new_str);
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    // Copy prefix data from original string
+    memcpy(new_str->data, str->data, prefix_len);
+    // Copy the new character at requested index
+    memcpy(new_str->data + prefix_len, utf8_char, new_char_bytes);
+    // Copy suffix data from the original string by skipping the overwritten character
+    memcpy(new_str->data + prefix_len + new_char_bytes, pos + old_char_bytes, suffix_len);
+    new_str->data[new_total_bytes] = '\0';
+
+    new_str->byte_size = new_total_bytes;
+    new_str->byte_capacity = new_total_bytes + 1;
+    new_str->char_count = str->char_count;
+
+    result.status = STRING_OK;
+    result.value.string = new_str;
+    SET_MSG(result, "Symbol successfully set");
+
+    return result;
+}
+
+/**
+ * string_to_lower
+ *  @str: a non-null string
+ *
+ *  Converts a String to lowercase
+ *
+ *  Returns a string_result_t containing a new string
+ */
+string_result_t string_to_lower(const string_t *str) {
+    string_result_t result = {0};
+
+    if (str == NULL) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid string");
+
+        return result;
+    }
+
+    char *buf = malloc(str->byte_capacity);
+    if (buf == NULL) {
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    const char *src = str->data;
+    char *dst = buf;
+
+    while (*src) {
+        int len;
+        uint32_t codepoint = utf8_decode(src, &len);
+        uint32_t lower = (codepoint >= 'A' && codepoint <= 'Z') ? codepoint + 32 : codepoint;
+        dst += utf8_encode(lower, dst);
+        src += len;
+    }
+    *dst = '\0';
+    result = string_new(buf);
+    free(buf);
+
+    SET_MSG(result, "String successfully converted to lowercase");
+
+    return result;
+}
+
+/**
+ * string_to_upper
+ *  @str: a non-null string
+ *
+ *  Converts a String to uppercase
+ *
+ *  Returns a string_result_t containing a new string
+ */
+string_result_t string_to_upper(const string_t *str) {
+    string_result_t result = {0};
+
+    if (str == NULL) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid string");
+
+        return result;
+    }
+
+    char *buf = malloc(str->byte_capacity);
+    if (buf == NULL) {
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    const char *src = str->data;
+    char *dst = buf;
+    while (*src) {
+        int len;
+        uint32_t codepoint = utf8_decode(src, &len);
+        uint32_t upper = (codepoint >= 'a' && codepoint <= 'z') ? codepoint - 32 : codepoint;
+        dst += utf8_encode(upper, dst);
+        src += len;
+    }
+    *dst = '\0';
+    result = string_new(buf);
+free(buf);
+
+    SET_MSG(result, "String successfully converted to uppercase");
+
+    return result;
+}
+
+/**
+ * string_reverse
+ *  @str: a non-null string
+ *
+ *  Reverses @str
+ *
+ *  Returns a new string_result_t containing the reversed string
+ */
+string_result_t string_reverse(const string_t *str) {
+    string_result_t result = {0};
+
+    if (str == NULL) {
+        result.status = STRING_ERR_INVALID;
+        SET_MSG(result, "Invalid string");
+
+        return result;
+    }
+
+    char *buf = malloc(str->byte_capacity);
+    if (buf == NULL) {
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    const char **pos = malloc(str->char_count * sizeof(char *));
+    if (pos == NULL) {
+        free(buf);
+        result.status = STRING_ERR_ALLOCATE;
+        SET_MSG(result, "Cannot allocate memory");
+
+        return result;
+    }
+
+    const char *ptr = str->data;
+    for (size_t idx = 0; idx < str->char_count; idx++) {
+        pos[idx] = ptr;
+        ptr += utf8_char_len((unsigned char)*ptr);
+    }
+
+    char *dst = buf;
+    for (int64_t idx = (int64_t)str->char_count - 1; idx >= 0; idx--) {
+        int len = utf8_char_len((unsigned char)*pos[idx]);
+        memcpy(dst, pos[idx], len);
+        dst += len;
+    }
+
+    *dst = '\0';
+    free(pos);
+    result = string_new(buf);
+    free(buf);
+
+    SET_MSG(result, "String successfully reversed");
 
     return result;
 }
