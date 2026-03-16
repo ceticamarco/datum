@@ -7,6 +7,7 @@
 #include "../src/vector.h"
 #include "../src/map.h"
 #include "../src/bigint.h"
+#include "../src/string.h"
 
 typedef void (*test_fn_t)(size_t iterations);
 
@@ -116,6 +117,31 @@ void test_bigint(size_t iterations) {
     }
 }
 
+void test_string(size_t iterations) {
+    volatile size_t total_len = 0;
+
+    for (size_t idx = 0; idx < iterations; idx++) {
+        string_t *str1 = string_new("hello").value.string;
+        string_t *str2 = string_new(" World").value.string;
+
+        string_result_t concat = string_concat(str1, str2);
+        string_result_t upper = string_to_upper(concat.value.string);
+        total_len += string_size(upper.value.string);
+        string_result_t needle = string_new("WORLD");
+        string_result_t contains = string_contains(upper.value.string, needle.value.string);
+
+        if (contains.value.idx >= 0) {
+            total_len += contains.value.idx;
+        }
+
+        string_destroy(str1);
+        string_destroy(str2);
+        string_destroy(concat.value.string);
+        string_destroy(upper.value.string);
+        string_destroy(needle.value.string);
+    }
+}
+
 static inline uint64_t now_ns(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -154,6 +180,10 @@ int main(void) {
     printf("Computing BigInt average time...");
     fflush(stdout);
     printf("average time: %lld ms\n", benchmark(test_bigint, 1e5, 30));
+
+    printf("Computing String average time...");
+    fflush(stdout);
+    printf("average time: %lld ms\n", benchmark(test_string, 1e5, 30));
 
     return 0;
 }

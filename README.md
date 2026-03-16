@@ -187,14 +187,16 @@ $ ./test_bigint
 ```
 
 ## Benchmark
-Under the [`benchmark/`](/benchmark/) folder, you can find a simple benchmark program that stress the `Vector` and the `Map` data structures. You can run it by issuing the following command:
+Under the [`benchmark/`](/benchmark/) folder, you can find a very simple benchmark program that stress the data structures. 
+You can run it by issuing the following command:
 
 ```sh
 $ make clean all CC=clang
 $ ./benchmark_datum
-omputing Vector average time...average time: 8 ms
-Computing Map average time...average time: 53 ms
-Computing BigInt average time...average time: 76 ms
+Computing Vector average time...average time: 6 ms
+Computing Map average time...average time: 49 ms
+Computing BigInt average time...average time: 67 ms
+Computing String average time...average time: 13 ms
 ```
 
 
