@@ -910,7 +910,7 @@ string_result_t string_destroy(string_t *str) {
 }
 
 /**
- * string_split_destory
+ * string_split_destroy
  *  @split: an array of pointers of String
  *  @count: the number of elements
  *

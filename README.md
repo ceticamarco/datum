@@ -11,7 +11,8 @@ the standard library. It currently features:
 
 - [**Vector**](/docs/vector.md): a growable, contiguous array of homogenous generic data types;  
 - [**Map**](/docs/map.md): an associative array of generic heterogenous data types;  
-- [**BigInt**](/docs/bigint.md): a data type for arbitrary large integers.
+- [**BigInt**](/docs/bigint.md): a data type for arbitrary large integers;  
+- [**String**](/docs/string.md): an immutable, null-terminated string type with partial UTF-8 support.
 
 ## Usage
 At its simplest, you can use this library as follows:
@@ -134,19 +135,43 @@ int main(void) {
 }
 ```
 
-For a more exhaustive example, refer to the `usage.c` file. There, you will find a program with proper error management
-and a sample usage for every available method. To run it, first issue the following command:
+### `String` usage
+```c
+#include <stdio.h>
+
+#include "src/string.h"
+
+/*
+ * Compile with: gcc main.c src/string.c
+ * Output: Final string: "Hello,World,😀" Splitted: ["Hello" "World" "😀" ]
+ */
+int main(void) {
+    string_t *x = string_new("   Hello,  ").value.string;
+    string_t *x_trm = string_trim(x).value.string;
+
+    string_t *y = string_new("😀,dlroW").value.string;
+    string_t *y_rev = string_reverse(y).value.string;
+
+    string_t *str = string_concat(x_trm, y_rev).value.string;
+    string_t **strings = string_split(str, ",").value.split.strings;
+
+    printf("Final string: \"%s\" Splitted: [", str->data);
+    for (int idx = 0; idx < 3; idx++) { printf("\"%s\" ", strings[idx]->data); }
+    printf("]\n");
+
+    string_split_destroy(strings, 3); string_destroy(str);
+    string_destroy(x); string_destroy(y);
+    string_destroy(x_trm); string_destroy(y_rev);
+
+    return 0;
+}
+```
+
+For additional usage samples, refer to the [`examples/`](/examples) directory. You can compile these example programs with the following command:
 
 ```sh
 $ make clean all
 ```
-
-This will compile the library as well as the `usage.c` file, the unit tests and the benchmark. After that, you can run it by typing `./usage`.
-
-> [!NOTE]
-> This project is primarily developed for learning purposes and was not created with industrial
-> or production use in mind. As such, it is not intended to compete with any existing C library such as the
-> GNU Multiple Precision Arithmetic Library (GMP).
 
 ## Documentation
 For additional details about this library (internal design, memory management, data ownership, etc.) go to the [docs folder](/docs).
