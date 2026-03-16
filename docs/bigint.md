@@ -80,8 +80,6 @@ Each method that returns such type indicates whether the operation was successfu
 by setting the `status` field and by providing a descriptive message on the `message`
 field. If the operation was successful (that is, `status == BIGINT_OK`), you can either
 move on with the rest of the program or read the returned value from the sum data type.
-Of course, you can choose to ignore the return value (if you're brave enough :D) as 
-illustrated on the first part of the README.
 
 The sum data type (i.e., the `value` union) defines four different variables. Each
 of them has an unique scope as described below:
